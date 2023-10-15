@@ -91,7 +91,7 @@ where
     pub fn update_attributes(
         &mut self,
         neighbour_radius: f32,
-        f: impl Fn(Vector3, &mut T, Vec<&Vector3>) + Sync,
+        f: impl Fn(&mut T, Vector3, Vec<&Vector3>) + Sync,
     ) {
         self.attributes
             .par_iter_mut()
@@ -103,7 +103,7 @@ where
                     .particles
                     .get_items_in_radius(particle, neighbour_radius);
 
-                f(self.particles[i], attribute, neighbours)
+                f(attribute, self.particles[i], neighbours)
             });
     }
 

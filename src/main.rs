@@ -15,10 +15,10 @@ const RELAXATION_T_STEP: f32 = 0.03;
 const RELAXATION_ITERATIONS: i32 = 10;
 
 // energy_contribution returns the energy of i due to j
-// fn energy_contribution(i_repulsion_radius: f32, i: Vector3, j: Vector3) -> f32 {
-//     RELAXATION_REPULSION_AMPLITUDE
-//         * ((i - j).length().powf(2.0) / (2.0 * i_repulsion_radius).powf(2.0))
-// }
+fn energy_contribution(i_repulsion_radius: f32, i: Vector3, j: Vector3) -> f32 {
+    RELAXATION_REPULSION_AMPLITUDE
+        * ((i - j).length().powf(2.0) / (2.0 * i_repulsion_radius).powf(2.0))
+}
 
 fn velocity(particle: Vector3, neighbours: Vec<&Vector3>, radius: f32) -> Vector3 {
     neighbours
@@ -48,6 +48,7 @@ fn constrain_velocity(
         )
 }
 
+#[derive(Copy, Clone)]
 struct RelaxationAttributes {
     velocity: Vector3,
     radius: f32,
@@ -62,19 +63,14 @@ fn relax(
 
         // Calculate desired velocity to spread particles evenly on the surface
         // Neighbour radius is a guess based on when energy goes to 0
-        particles.update_attributes(2.0, |position, particle, neighbours| {
-            particle.velocity = velocity(position, neighbours, particle.radius)
+        particles.update_attributes(2.0, |particle, position, neighbours| {
+            particle.velocity = velocity(position, neighbours, particle.radius);
         });
 
         // Constrain the velocity to the surface and add to the position
         particles.update_particles(|p, a| {
             p + constrain_velocity(&surface, p, a.velocity).scale_by(RELAXATION_T_STEP)
         });
-
-        // Update particle radius
-        // particles.update_attributes(2.0, |position, particle, neighbours| {
-        //     particle.velocity = velocity(position, neighbours, particle.radius)
-        // });
 
         println!("Pass {:?}, {:?}", j, start.elapsed());
     }
@@ -110,30 +106,7 @@ fn main() {
     );
 
     let seed = rvec3(0.0, 10.0, 0.0);
-    // let surface = smooth_union(
-    //     sphere(10.0),
-    //     union(
-    //         translate(rvec3(10.0, 0.0, 0.0), ellipsoid(10.0, 5.0, 5.0)),
-    //         translate(rvec3(0.0, 0.0, 10.0), ellipsoid(5.0, 5.0, 10.0)),
-    //     ),
-    //     0.5,
-    // );
-    // let surface = surface_at(10.0);
     let sample_radius = 0.1;
-
-    // println!("Sampling surface...");
-    // let start = Instant::now();
-    // let samples = sample(&surface, seed, sample_radius);
-    // println!(
-    //     "Done! {:?} elapsed, {:?} points generated",
-    //     start.elapsed(),
-    //     samples.len()
-    // );
-    //
-    // println!("Relaxing points...");
-    // let start = Instant::now();
-    // let mut relaxed = relax(samples, sample_radius, &surface);
-    // println!("Done! {:?} elapsed", start.elapsed());
 
     let surface = surface_at(0.0);
     let points = sample(surface, seed, sample_radius);
@@ -147,7 +120,6 @@ fn main() {
         let mut d = rl.begin_drawing(&thread);
 
         d.clear_background(Color::WHITE);
-
         let surface = surface_at(d.get_time() as f32);
 
         {
