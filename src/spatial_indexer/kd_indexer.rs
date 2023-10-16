@@ -113,16 +113,16 @@ fn _split<T: Positioned + Debug>(
     (midpoint, left, right)
 }
 
-fn _push<T: Positioned + Debug>(
-    item_arena: &mut Vec<T>,
+fn _insert_item_index<T: Positioned + Debug>(
+    item_arena: &Vec<T>,
     tree: &mut KdTree,
     parent_axis: SplitAxis,
-    item: T,
+    index: usize,
 ) {
     match tree {
         KdTree::Leaf(l) => {
-            item_arena.push(item);
-            l.push(item_arena.len() - 1);
+            // item_arena.push(item);
+            l.push(index);
 
             let leaf_size = l.len();
             if leaf_size >= KD_LEAF_SIZE {
@@ -141,16 +141,45 @@ fn _push<T: Positioned + Debug>(
         }
         KdTree::Node(n) => {
             // Point needs to be inserted into one side
-            if n.axis.component(&item.position()) < n.midpoint {
-                _push(item_arena, n.right.as_mut(), n.axis, item);
+            if n.axis.component(&item_arena[index].position()) < n.midpoint {
+                _insert_item_index(item_arena, n.right.as_mut(), n.axis, index);
             } else {
-                _push(item_arena, n.left.as_mut(), n.axis, item);
+                _insert_item_index(item_arena, n.left.as_mut(), n.axis, index);
             }
         }
     }
 }
 
-fn _any_overlap<T: Positioned + Debug>(
+fn _remove_item_index<T: Positioned + Debug>(item_arena: &Vec<T>, tree: &mut KdTree, index: usize) {
+    match tree {
+        KdTree::Leaf(l) => {
+            // Find the index of the index
+            // TODO: If the index was sorted, we could use a binary_search
+            let mut index_index: isize = -1;
+            for (i, value) in l.iter().enumerate() {
+                if *value == index {
+                    index_index = i as isize;
+                }
+            }
+
+            l.remove(index_index as usize);
+
+            if l.len() == 0 {
+                panic!("handle empty leaf!")
+            }
+        }
+        KdTree::Node(n) => {
+            // Point needs to be inserted into one side
+            if n.axis.component(&item_arena[index].position()) < n.midpoint {
+                _remove_item_index(item_arena, n.right.as_mut(), index);
+            } else {
+                _remove_item_index(item_arena, n.left.as_mut(), index);
+            }
+        }
+    }
+}
+
+fn _any_indices_within<T: Positioned + Debug>(
     item_arena: &Vec<T>,
     tree: &KdTree,
     origin: Vector3,
@@ -170,14 +199,14 @@ fn _any_overlap<T: Positioned + Debug>(
             let component = n.axis.component(&origin);
 
             ((component + radius >= n.midpoint)
-                && _any_overlap(item_arena, n.left.as_ref(), origin, radius))
+                && _any_indices_within(item_arena, n.left.as_ref(), origin, radius))
                 || ((component - radius < n.midpoint)
-                    && _any_overlap(item_arena, n.right.as_ref(), origin, radius))
+                    && _any_indices_within(item_arena, n.right.as_ref(), origin, radius))
         }
     }
 }
 
-fn _get_items_in_radius<T: Positioned + Debug>(
+fn _get_indices_within<T: Positioned + Debug>(
     item_arena: &Vec<T>,
     tree: &KdTree,
     origin: Vector3,
@@ -198,11 +227,11 @@ fn _get_items_in_radius<T: Positioned + Debug>(
             let component = n.axis.component(&origin);
 
             if component + radius >= n.midpoint {
-                _get_items_in_radius(item_arena, &n.left, origin, radius, items)
+                _get_indices_within(item_arena, &n.left, origin, radius, items)
             }
 
             if component - radius < n.midpoint {
-                _get_items_in_radius(item_arena, &n.right, origin, radius, items)
+                _get_indices_within(item_arena, &n.right, origin, radius, items)
             }
         }
     }
@@ -238,19 +267,12 @@ where
         }
     }
 
-    pub fn from_items(items: Vec<T>) -> Self {
-        let mut container = KdContainer {
-            items,
-            tree: KdTree::Leaf(vec![]),
-        };
-
-        container.reconstruct();
-
-        return container;
-    }
-
     pub fn push(&mut self, point: T) {
-        _push(&mut self.items, &mut self.tree, SplitAxis::X, point)
+        self.items.push(point);
+
+        let index = self.items.len() - 1;
+
+        _insert_item_index(&mut self.items, &mut self.tree, SplitAxis::X, index)
     }
 
     pub fn append(&mut self, points: Vec<T>) {
@@ -260,23 +282,7 @@ where
     }
 
     pub fn any_items_in_radius(&self, point: Vector3, radius: f32) -> bool {
-        _any_overlap(&self.items, &self.tree, point, radius)
-    }
-
-    pub fn get_items_in_radius(&self, point: Vector3, radius: f32) -> Vec<&T> {
-        let mut items = vec![];
-
-        _get_items_in_radius(&self.items, &self.tree, point, radius, &mut items);
-
-        items.iter().map(|i| &self.items[*i]).collect()
-    }
-
-    pub fn len(&self) -> usize {
-        self.items.len()
-    }
-
-    pub fn reconstruct(&mut self) {
-        self.tree = _construct(&self.items, (0..self.items.len()).collect(), SplitAxis::X)
+        _any_indices_within(&self.items, &self.tree, point, radius)
     }
 }
 
@@ -298,15 +304,23 @@ impl SpatialIndexer for KdIndexer {
         self.root = _construct(&items, (0..items.len()).collect(), SplitAxis::X)
     }
 
+    fn insert_item_index(&mut self, items: &Vec<Vector3>, index: usize) {
+        _insert_item_index(items, &mut self.root, SplitAxis::X, index)
+    }
+
+    fn remove_item_index(&mut self, items: &Vec<Vector3>, index: usize) {
+        _remove_item_index(items, &mut self.root, index)
+    }
+
     fn get_indices_within(&self, items: &Vec<Vector3>, origin: Vector3, radius: f32) -> Vec<usize> {
         let mut indicies = vec![];
 
-        _get_items_in_radius(items, &self.root, origin, radius, &mut indicies);
+        _get_indices_within(items, &self.root, origin, radius, &mut indicies);
 
         indicies
     }
 
     fn any_indices_within(&self, items: &Vec<Vector3>, origin: Vector3, radius: f32) -> bool {
-        _any_overlap(items, &self.root, origin, radius)
+        _any_indices_within(items, &self.root, origin, radius)
     }
 }
