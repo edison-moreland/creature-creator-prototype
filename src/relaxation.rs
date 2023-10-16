@@ -1,6 +1,7 @@
 use crate::spatial_indexer::kd_indexer::{KdContainer, KdIndexer};
 use crate::spatial_indexer::SpatialIndexer;
 use crate::surfaces::gradient;
+use raylib::ffi::true_;
 use raylib::prelude::*;
 use rayon::prelude::*;
 use std::ops::Neg;
@@ -8,9 +9,18 @@ use std::time::Instant;
 
 const REPULSION_AMPLITUDE: f32 = 6.0;
 const FEEDBACK: f32 = 15.0;
-const NEIGHBOUR_RADIUS: f32 = 2.0;
+const NEIGHBOUR_RADIUS: f32 = 4.0;
 const UPDATE_ITERATIONS: usize = 1;
 const ITERATION_T_STEP: f32 = 0.03;
+const EQUILIBRIUM_SPEED: f32 = 4.0;
+const FISSION_COEFFICIENT: f32 = 0.2;
+const DEATH_COEFFICIENT: f32 = 0.7;
+const MAX_RADIUS_COEFFICIENT: f32 = 1.5;
+const DESIRED_REPULSION_ENERGY: f32 = REPULSION_AMPLITUDE * 0.8;
+
+fn random_velocity() -> Vector3 {
+    Vector3::new(rand::random(), rand::random(), rand::random()).normalized()
+}
 
 // energy_contribution returns the energy of i due to j
 fn energy_contribution(i_repulsion_radius: f32, i: Vector3, j: Vector3) -> f32 {
@@ -20,14 +30,18 @@ fn energy_contribution(i_repulsion_radius: f32, i: Vector3, j: Vector3) -> f32 {
             .exp()
 }
 
-fn particle_radius(position: Vector3, radius: f32, neighbours: Vec<Vector3>) -> f32 {
-    let repulsion_energy: f32 = neighbours.iter().fold(0.0, |energy, n_position| {
+fn repulsion_energy(position: Vector3, radius: f32, neighbours: &Vec<Vector3>) -> f32 {
+    neighbours.iter().fold(0.0, |energy, n_position| {
         energy + energy_contribution(radius, position, *n_position)
-    });
+    })
+}
 
-    let desired_re = REPULSION_AMPLITUDE * 0.8;
+fn particle_radius(position: Vector3, radius: f32, neighbours: Vec<Vector3>) -> f32 {
+    let re = repulsion_energy(position, radius, &neighbours);
 
-    let re_delta = -(FEEDBACK * (repulsion_energy - desired_re));
+    // let desired_re = REPULSION_AMPLITUDE * DESIRED_REPULSION_ENERGY_COEFFICIENT;
+
+    let re_delta = -(FEEDBACK * (re - DESIRED_REPULSION_ENERGY));
 
     // change in energy with respect to change in radius
     let temp: f32 = neighbours.iter().fold(0.0, |sum, n_position| {
@@ -79,6 +93,22 @@ fn constrain_to_surface(
         - grad.scale_by((grad.dot(velocity) + (FEEDBACK * surface(position))) / (grad.dot(grad)))
 }
 
+fn should_die(radius: f32, desired_radius: f32) -> bool {
+    // Assuming particle is at equilibrium
+    let death_radius = desired_radius * DEATH_COEFFICIENT;
+    radius < death_radius && rand::random::<f32>() > radius / death_radius
+}
+
+fn should_fission_radius(radius: f32, desired_radius: f32) -> bool {
+    let fission_radius = desired_radius * MAX_RADIUS_COEFFICIENT;
+    radius > fission_radius
+}
+
+fn should_fission_energy(radius: f32, energy: f32, desired_radius: f32) -> bool {
+    let fission_energy = DESIRED_REPULSION_ENERGY * FISSION_COEFFICIENT;
+    energy > fission_energy && radius > desired_radius
+}
+
 pub struct RelaxationSystem {
     position_index: KdIndexer,
     position: Vec<Vector3>,
@@ -105,37 +135,33 @@ impl RelaxationSystem {
         }
     }
 
-    pub fn positions(&self) -> Vec<(Vector3, f32, f32)> {
+    pub fn positions(&self) -> Vec<(Vector3, f32)> {
         self.position
             .iter()
             .copied()
             .zip(self.radius.iter().copied())
             .map(|(position, radius)| {
-                let neighbour_indices = self.position_index.get_indices_within(
-                    &self.position,
-                    position,
-                    NEIGHBOUR_RADIUS,
-                );
-
-                let repulsion_energy: f32 = neighbour_indices
-                    .iter()
-                    .map(|i| self.position[*i])
-                    .fold(0.0, |energy, n_position| {
-                        energy + energy_contribution(radius, position, n_position)
-                    });
-
-                (position, radius, repulsion_energy)
+                // let neighbour_indices = self.position_index.get_indices_within(
+                //     &self.position,
+                //     position,
+                //     NEIGHBOUR_RADIUS,
+                // );
+                //
+                // let repulsion_energy: f32 = neighbour_indices
+                //     .iter()
+                //     .map(|i| self.position[*i])
+                //     .fold(0.0, |energy, n_position| {
+                //         energy + energy_contribution(radius, position, n_position)
+                //     });
+                //
+                (position, radius)
             })
             .collect()
     }
 
-    pub fn update(
-        &mut self,
-        desired_repulsion_radius: f32,
-        surface: impl Fn(Vector3) -> f32 + Send + Sync,
-    ) {
+    pub fn update(&mut self, desired_radius: f32, surface: impl Fn(Vector3) -> f32 + Send + Sync) {
         for i in 0..UPDATE_ITERATIONS {
-            // let start = Instant::now();
+            let start = Instant::now();
 
             // Update velocity to push samples away from each other
             self.update_velocity(|(position, radius), neighbours| {
@@ -158,20 +184,79 @@ impl RelaxationSystem {
             });
 
             // Apply fission/death
-            // for i in 0..self.position.len() {
-            //     let position = self.position[i];
-            //     let velocity = self.velocity[i];
-            //     let radius = self.radius[i];
-            //
-            //     if radius > desired_repulsion_radius * 1.5 {
-            //         println!("{:?} {:?} {:?}", position, velocity, radius);
-            //         self.radius[i] = desired_repulsion_radius * 1.5
-            //     }
-            //
-            //     // if radius <
-            // }
+            let mut indices_to_die = vec![];
+            let mut indices_to_fission = vec![];
+            for i in 0..self.position.len() {
+                let position = self.position[i];
+                let velocity = self.velocity[i];
+                let radius = self.radius[i];
 
-            // println!("Pass {:?}, {:?}", i, start.elapsed());
+                // Skip particles that are not at equilibrium
+                if velocity.length() >= (EQUILIBRIUM_SPEED * radius) {
+                    continue;
+                }
+
+                // We check if the particle needs to die first because it's cheaper
+                if should_die(radius, desired_radius) {
+                    indices_to_die.push(i);
+                    continue;
+                }
+
+                if should_fission_radius(radius, desired_radius) {
+                    indices_to_fission.push(i);
+                    continue;
+                }
+
+                let neighbours: Vec<Vector3> = self
+                    .position_index
+                    .get_indices_within(&self.position, position, NEIGHBOUR_RADIUS)
+                    .iter()
+                    .filter(|j| **j != i)
+                    .map(|j| self.position[*j])
+                    .collect();
+
+                let energy = repulsion_energy(position, radius, &neighbours);
+
+                if should_fission_energy(radius, energy, desired_radius) {
+                    indices_to_fission.push(i);
+                    continue;
+                }
+            }
+
+            for i in &indices_to_fission {
+                // We reuse this index for the first child. The second child gets pushed to the end
+                let position = self.position[*i];
+                // let velocity = self.velocity[*i];
+                let radius = self.radius[*i];
+
+                let new_radius = radius / (2.0_f32).sqrt();
+
+                let new_velocity = random_velocity().scale_by(radius);
+                self.position[*i] += new_velocity;
+                self.position.push(position - new_velocity);
+
+                self.radius[*i] = new_radius;
+                self.radius.push(new_radius);
+
+                self.velocity[*i] = rvec3(0, 0, 0);
+                self.velocity.push(rvec3(0, 0, 0));
+            }
+
+            for i in indices_to_die.iter().rev() {
+                self.position.remove(*i);
+                self.velocity.remove(*i);
+                self.radius.remove(*i);
+            }
+
+            self.position_index.reindex(&self.position);
+
+            println!(
+                "Pass {:?}, {:?}, Fission/Death: {:?}/{:?} ",
+                i,
+                start.elapsed(),
+                indices_to_fission.len(),
+                indices_to_die.len()
+            );
         }
     }
 

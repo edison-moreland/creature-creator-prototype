@@ -5,7 +5,7 @@ mod surfaces;
 
 use crate::relaxation::RelaxationSystem;
 use crate::sampling::sample;
-use crate::surfaces::{ellipsoid, smooth_union, sphere, translate, union};
+use crate::surfaces::{ellipsoid, gradient, smooth_union, sphere, translate, union};
 use raylib::prelude::*;
 use std::time::Instant;
 
@@ -53,26 +53,15 @@ fn main() {
 
         {
             let mut d3d = d.begin_mode3D(camera);
-            for (point, radius, energy) in particles.positions() {
-                // let normal = gradient(&surface, point).normalized();
+            for (point, radius) in particles.positions() {
+                let normal = gradient(&surface, point).normalized();
 
-                println!("{:?}", energy / (6.0 * 0.8));
-
-                let energy_color = rvec3(1.0, 0, 0).lerp(rvec3(0, 0, 1.0), energy / (6.0 * 0.8));
-
-                let point_color = Color::color_from_normalized(Vector4::new(
-                    energy_color.x,
-                    energy_color.y,
-                    energy_color.z,
-                    1.0,
-                ));
+                let point_color =
+                    Color::color_from_normalized(Vector4::new(normal.x, normal.y, normal.z, 1.0));
                 d3d.draw_sphere(point, radius, point_color)
             }
         }
 
-        // println!("Relaxing points...");
-        // let start = Instant::now();
-        particles.update(sample_radius, &surface);
-        // println!("Done! {:?} elapsed", start.elapsed());
+        particles.update(sample_radius / 2.0, &surface);
     }
 }
