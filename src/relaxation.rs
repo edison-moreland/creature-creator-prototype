@@ -65,8 +65,6 @@ fn particle_velocity(position: Vector3, radius: f32, neighbours: Vec<(Vector3, f
             // println!("{:?} - {:?} = {:?}", rej, rej, rei - rej);
 
             dv + (rei - rej)
-
-            // dv + rij.scale_by(energy_contribution(radius, position, n_position))
         })
         .scale_by(radius.powf(2.0))
 }
@@ -239,58 +237,5 @@ impl RelaxationSystem {
             .for_each(|(i, p)| *p = f(*p, self.velocity[i]));
 
         self.position_index.reindex(&self.position)
-    }
-}
-
-// TODO: Particle store legacy
-pub struct ParticleStore<T> {
-    particles: KdContainer<Vector3>,
-    attributes: Vec<T>,
-}
-
-impl<T> ParticleStore<T>
-where
-    T: Send + Sync,
-{
-    pub fn new(particles: Vec<Vector3>, f: impl Fn(Vector3) -> T) -> Self {
-        let attributes = particles.iter().map(|p| f(*p)).collect();
-
-        ParticleStore {
-            particles: KdContainer::from_items(particles),
-            attributes,
-        }
-    }
-
-    pub fn update_attributes(
-        &mut self,
-        neighbour_radius: f32,
-        f: impl Fn(&mut T, Vector3, Vec<&Vector3>) + Sync,
-    ) {
-        self.attributes
-            .par_iter_mut()
-            .enumerate()
-            .for_each(|(i, attribute)| {
-                let particle = self.particles[i];
-
-                let neighbours = self
-                    .particles
-                    .get_items_in_radius(particle, neighbour_radius);
-
-                f(attribute, self.particles[i], neighbours)
-            });
-    }
-
-    pub fn update_particles(&mut self, f: impl Fn(Vector3, &T) -> Vector3 + Sync) {
-        self.particles
-            .items
-            .par_iter_mut()
-            .enumerate()
-            .for_each(|(i, particle)| *particle = f(*particle, &self.attributes[i]));
-
-        self.particles.reconstruct()
-    }
-
-    pub fn positions(&self) -> Vec<Vector3> {
-        self.particles.items.clone()
     }
 }
