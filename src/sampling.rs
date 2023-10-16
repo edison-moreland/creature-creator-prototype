@@ -1,4 +1,4 @@
-use crate::kdtree::KdContainer;
+use crate::spatial_indexer::kd_indexer::KdContainer;
 use crate::surfaces::{gradient, on_surface};
 use raylib::prelude::*;
 

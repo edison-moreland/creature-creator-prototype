@@ -1,3 +1,4 @@
+use crate::spatial_indexer::SpatialIndexer;
 use raylib::prelude::*;
 use std::fmt::Debug;
 use std::ops::Index;
@@ -30,16 +31,6 @@ impl SplitAxis {
     }
 }
 
-pub trait Positioned {
-    fn position(&self) -> Vector3;
-}
-
-impl Positioned for Vector3 {
-    fn position(&self) -> Vector3 {
-        *self
-    }
-}
-
 #[derive(Debug)]
 enum KdTree {
     Leaf(Vec<usize>),
@@ -55,74 +46,13 @@ struct KdNode {
     left: Box<KdTree>,
 }
 
-#[derive(Debug)]
-pub struct KdContainer<T: Positioned + Debug> {
-    pub items: Vec<T>,
-
-    tree: KdTree,
+pub trait Positioned {
+    fn position(&self) -> Vector3;
 }
 
-impl<T> Index<usize> for KdContainer<T>
-where
-    T: Positioned + Debug,
-{
-    type Output = T;
-
-    fn index(&self, index: usize) -> &Self::Output {
-        &self.items[index]
-    }
-}
-
-impl<T> KdContainer<T>
-where
-    T: Positioned + Debug + Copy + Sync + Send,
-{
-    pub fn new() -> Self {
-        KdContainer {
-            items: vec![],
-            tree: KdTree::Leaf(vec![]),
-        }
-    }
-
-    pub fn from_items(items: Vec<T>) -> Self {
-        let mut container = KdContainer {
-            items,
-            tree: KdTree::Leaf(vec![]),
-        };
-
-        container.reconstruct();
-
-        return container;
-    }
-
-    pub fn push(&mut self, point: T) {
-        _push(&mut self.items, &mut self.tree, SplitAxis::X, point)
-    }
-
-    pub fn append(&mut self, points: Vec<T>) {
-        for point in points {
-            self.push(point)
-        }
-    }
-
-    pub fn any_items_in_radius(&self, point: Vector3, radius: f32) -> bool {
-        _any_overlap(&self.items, &self.tree, point, radius)
-    }
-
-    pub fn get_items_in_radius(&self, point: Vector3, radius: f32) -> Vec<&T> {
-        let mut items = vec![];
-
-        _get_items_in_radius(&self.items, &self.tree, point, radius, &mut items);
-
-        items
-    }
-
-    pub fn len(&self) -> usize {
-        self.items.len()
-    }
-
-    pub fn reconstruct(&mut self) {
-        self.tree = _construct(&self.items, (0..self.items.len()).collect(), SplitAxis::X)
+impl Positioned for Vector3 {
+    fn position(&self) -> Vector3 {
+        *self
     }
 }
 
@@ -247,12 +177,12 @@ fn _any_overlap<T: Positioned + Debug>(
     }
 }
 
-fn _get_items_in_radius<'a, T: Positioned + Debug>(
-    item_arena: &'a Vec<T>,
-    tree: &'a KdTree,
+fn _get_items_in_radius<T: Positioned + Debug>(
+    item_arena: &Vec<T>,
+    tree: &KdTree,
     origin: Vector3,
     radius: f32,
-    items: &mut Vec<&'a T>,
+    items: &mut Vec<usize>,
 ) {
     match tree {
         KdTree::Leaf(l) => {
@@ -260,7 +190,7 @@ fn _get_items_in_radius<'a, T: Positioned + Debug>(
                 let item = &item_arena[*item_idx];
 
                 if item.position().distance_to(origin) <= radius {
-                    items.push(item)
+                    items.push(*item_idx)
                 }
             }
         }
@@ -275,5 +205,108 @@ fn _get_items_in_radius<'a, T: Positioned + Debug>(
                 _get_items_in_radius(item_arena, &n.right, origin, radius, items)
             }
         }
+    }
+}
+
+// KdContainer is legacy, but SpatialIndexer interface doesn't work well when new points are being added
+#[derive(Debug)]
+pub struct KdContainer<T: Positioned + Debug> {
+    pub items: Vec<T>,
+
+    tree: KdTree,
+}
+
+impl<T> Index<usize> for KdContainer<T>
+where
+    T: Positioned + Debug,
+{
+    type Output = T;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.items[index]
+    }
+}
+
+impl<T> KdContainer<T>
+where
+    T: Positioned + Debug + Copy + Sync + Send,
+{
+    pub fn new() -> Self {
+        KdContainer {
+            items: vec![],
+            tree: KdTree::Leaf(vec![]),
+        }
+    }
+
+    pub fn from_items(items: Vec<T>) -> Self {
+        let mut container = KdContainer {
+            items,
+            tree: KdTree::Leaf(vec![]),
+        };
+
+        container.reconstruct();
+
+        return container;
+    }
+
+    pub fn push(&mut self, point: T) {
+        _push(&mut self.items, &mut self.tree, SplitAxis::X, point)
+    }
+
+    pub fn append(&mut self, points: Vec<T>) {
+        for point in points {
+            self.push(point)
+        }
+    }
+
+    pub fn any_items_in_radius(&self, point: Vector3, radius: f32) -> bool {
+        _any_overlap(&self.items, &self.tree, point, radius)
+    }
+
+    pub fn get_items_in_radius(&self, point: Vector3, radius: f32) -> Vec<&T> {
+        let mut items = vec![];
+
+        _get_items_in_radius(&self.items, &self.tree, point, radius, &mut items);
+
+        items.iter().map(|i| &self.items[*i]).collect()
+    }
+
+    pub fn len(&self) -> usize {
+        self.items.len()
+    }
+
+    pub fn reconstruct(&mut self) {
+        self.tree = _construct(&self.items, (0..self.items.len()).collect(), SplitAxis::X)
+    }
+}
+
+// KdIndexer uses a KdTree to provide spatial indexing
+pub struct KdIndexer {
+    root: KdTree,
+}
+
+impl KdIndexer {
+    pub fn new() -> Self {
+        KdIndexer {
+            root: KdTree::Leaf(vec![]),
+        }
+    }
+}
+
+impl SpatialIndexer for KdIndexer {
+    fn reindex(&mut self, items: &Vec<Vector3>) {
+        self.root = _construct(&items, (0..items.len()).collect(), SplitAxis::X)
+    }
+
+    fn get_indices_within(&self, items: &Vec<Vector3>, origin: Vector3, radius: f32) -> Vec<usize> {
+        let mut indicies = vec![];
+
+        _get_items_in_radius(items, &self.root, origin, radius, &mut indicies);
+
+        indicies
+    }
+
+    fn any_indices_within(&self, items: &Vec<Vector3>, origin: Vector3, radius: f32) -> bool {
+        _any_overlap(items, &self.root, origin, radius)
     }
 }
