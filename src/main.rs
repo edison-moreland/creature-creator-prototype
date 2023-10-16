@@ -106,7 +106,7 @@ fn main() {
     );
 
     let seed = rvec3(0.0, 10.0, 0.0);
-    let sample_radius = 0.1;
+    let sample_radius = 0.5;
 
     let surface = surface_at(0.0);
     let points = sample(surface, seed, sample_radius);
@@ -116,7 +116,7 @@ fn main() {
     //     radius: sample_radius,
     // });
 
-    let mut particles = RelaxationSystem::new(points, sample_radius * 10.0);
+    let mut particles = RelaxationSystem::new(points, sample_radius);
 
     while !rl.window_should_close() {
         let mut d = rl.begin_drawing(&thread);
@@ -127,19 +127,26 @@ fn main() {
 
         {
             let mut d3d = d.begin_mode3D(camera);
-            for point in particles.positions() {
-                let normal = gradient(&surface, *point).normalized();
+            for (point, radius, energy) in particles.positions() {
+                // let normal = gradient(&surface, point).normalized();
 
-                let point_color =
-                    Color::color_from_normalized(Vector4::new(normal.x, normal.y, normal.z, 1.0));
-                d3d.draw_sphere(point, sample_radius, point_color)
+                println!("{:?}", energy / (6.0 * 0.8));
+
+                let energy_color = rvec3(1.0, 0, 0).lerp(rvec3(0, 0, 1.0), energy / (6.0 * 0.8));
+
+                let point_color = Color::color_from_normalized(Vector4::new(
+                    energy_color.x,
+                    energy_color.y,
+                    energy_color.z,
+                    1.0,
+                ));
+                d3d.draw_sphere(point, radius, point_color)
             }
         }
 
-        println!("Relaxing points...");
-        let start = Instant::now();
-        particles.update(&surface);
-        // relax(&mut particles, &surface);
-        println!("Done! {:?} elapsed", start.elapsed());
+        // println!("Relaxing points...");
+        // let start = Instant::now();
+        particles.update(sample_radius, &surface);
+        // println!("Done! {:?} elapsed", start.elapsed());
     }
 }
