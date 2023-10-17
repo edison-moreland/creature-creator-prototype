@@ -1,7 +1,6 @@
-use crate::spatial_indexer::kd_indexer::{KdContainer, KdIndexer};
+use crate::spatial_indexer::kd_indexer::KdIndexer;
 use crate::spatial_indexer::SpatialIndexer;
 use crate::surfaces::gradient;
-use raylib::ffi::true_;
 use raylib::prelude::*;
 use rayon::prelude::*;
 use std::ops::Neg;
@@ -12,7 +11,7 @@ const FEEDBACK: f32 = 15.0;
 const NEIGHBOUR_RADIUS: f32 = 4.0;
 const UPDATE_ITERATIONS: usize = 1;
 const ITERATION_T_STEP: f32 = 0.03;
-const EQUILIBRIUM_SPEED: f32 = 4.0;
+const EQUILIBRIUM_SPEED: f32 = 10.0;
 const FISSION_COEFFICIENT: f32 = 0.2;
 const DEATH_COEFFICIENT: f32 = 0.7;
 const MAX_RADIUS_COEFFICIENT: f32 = 1.5;
@@ -78,7 +77,7 @@ fn particle_velocity(position: Vector3, radius: f32, neighbours: Vec<(Vector3, f
 
             // println!("{:?} - {:?} = {:?}", rej, rej, rei - rej);
 
-            dv + (rei - rej)
+            dv + (rei + rej)
         })
         .scale_by(radius.powf(2.0))
 }
@@ -107,6 +106,7 @@ fn should_fission_radius(radius: f32, desired_radius: f32) -> bool {
 fn should_fission_energy(radius: f32, energy: f32, desired_radius: f32) -> bool {
     let fission_energy = DESIRED_REPULSION_ENERGY * FISSION_COEFFICIENT;
     energy > fission_energy && radius > desired_radius
+    // energy > fission_energy
 }
 
 pub struct RelaxationSystem {
@@ -135,33 +135,32 @@ impl RelaxationSystem {
         }
     }
 
-    pub fn positions(&self) -> Vec<(Vector3, f32)> {
+    pub fn positions(&self) -> Vec<(Vector3, Vector3, f32)> {
         self.position
             .iter()
             .copied()
             .zip(self.radius.iter().copied())
-            .map(|(position, radius)| {
-                // let neighbour_indices = self.position_index.get_indices_within(
-                //     &self.position,
-                //     position,
-                //     NEIGHBOUR_RADIUS,
-                // );
-                //
-                // let repulsion_energy: f32 = neighbour_indices
+            .zip(self.velocity.iter().copied())
+            .enumerate()
+            .map(|(i, ((position, radius), velocity))| {
+                // let neighbours: Vec<Vector3> = self
+                //     .position_index
+                //     .get_indices_within(&self.position, position, NEIGHBOUR_RADIUS)
                 //     .iter()
-                //     .map(|i| self.position[*i])
-                //     .fold(0.0, |energy, n_position| {
-                //         energy + energy_contribution(radius, position, n_position)
-                //     });
+                //     .filter(|j| **j != i)
+                //     .map(|j| self.position[*j])
+                //     .collect();
                 //
-                (position, radius)
+                // let energy = repulsion_energy(position, radius, &neighbours);
+                //
+                (position, velocity, radius)
             })
             .collect()
     }
 
     pub fn update(&mut self, desired_radius: f32, surface: impl Fn(Vector3) -> f32 + Send + Sync) {
         for i in 0..UPDATE_ITERATIONS {
-            let start = Instant::now();
+            // let start = Instant::now();
 
             // Update velocity to push samples away from each other
             self.update_velocity(|(position, radius), neighbours| {
@@ -250,13 +249,13 @@ impl RelaxationSystem {
 
             self.position_index.reindex(&self.position);
 
-            println!(
-                "Pass {:?}, {:?}, Fission/Death: {:?}/{:?} ",
-                i,
-                start.elapsed(),
-                indices_to_fission.len(),
-                indices_to_die.len()
-            );
+            // println!(
+            //     "Pass {:?}, {:?}, Fission/Death: {:?}/{:?} ",
+            //     i,
+            //     start.elapsed(),
+            //     indices_to_fission.len(),
+            //     indices_to_die.len()
+            // );
         }
     }
 
