@@ -74,6 +74,8 @@ fn main() {
             }
         }
 
-        particles.update(0.3, &surface);
+        particles.update(sample_radius / 1.5, &surface);
+
+        d.draw_fps(0, 0);
     }
 }
