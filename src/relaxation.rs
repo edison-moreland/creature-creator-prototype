@@ -144,27 +144,12 @@ impl RelaxationSystem {
         }
     }
 
-    pub fn positions(&self) -> Vec<(Vector3, Vector3, f32)> {
+    pub fn positions(&self) -> impl Iterator<Item = (Vector3, f32)> + '_ {
         self.position
             .iter()
             .copied()
             .zip(self.radius.iter().copied())
-            .zip(self.velocity.iter().copied())
-            .enumerate()
-            .map(|(i, ((position, radius), velocity))| {
-                // let neighbours: Vec<Vector3> = self
-                //     .position_index
-                //     .get_indices_within(&self.position, position, NEIGHBOUR_RADIUS)
-                //     .iter()
-                //     .filter(|j| **j != i)
-                //     .map(|j| self.position[*j])
-                //     .collect();
-                //
-                // let energy = repulsion_energy(position, radius, &neighbours);
-                //
-                (position, velocity, radius)
-            })
-            .collect()
+        // .map(|(position, radius)| (position, radius))
     }
 
     pub fn update(&mut self, desired_radius: f32, surface: impl Fn(Vector3) -> f32 + Send + Sync) {

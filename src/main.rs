@@ -45,36 +45,28 @@ fn main() {
 
         t += 0.03;
         let surface = surface_at(t);
-        // let surface = surface_at(0.0);
 
         {
             let mut d3d = d.begin_mode3D(camera);
-            for (point, _, radius) in particles.positions() {
-                // let energy_color = rvec3(1.0, 0, 0).lerp(rvec3(0, 0, 1.0), energy / (6.0 * 0.8));
-                //
-                // let point_color = Color::color_from_normalized(Vector4::new(
-                //     energy_color.x,
-                //     energy_color.y,
-                //     energy_color.z,
-                //     1.0,
-                // ));
-
+            for (point, radius) in particles.positions() {
                 let normal = gradient(&surface, point).normalized();
 
-                let point_color =
-                    Color::color_from_normalized(Vector4::new(normal.x, normal.y, normal.z, 1.0));
+                let point_color = Color::color_from_normalized(Vector4::new(
+                    normal.x.abs(),
+                    normal.y.abs(),
+                    normal.z.abs(),
+                    1.0,
+                ));
 
-                // let point_color = if velocity.length() >= (8.0 * radius) {
-                //     Color::BLUE
-                // } else {
-                //     Color::RED
-                // };
-
-                d3d.draw_sphere(point, radius * 2.0, point_color)
+                d3d.draw_sphere(
+                    point - normal.scale_by(radius * 2.0),
+                    radius * 2.0,
+                    point_color,
+                )
             }
         }
 
-        particles.update(sample_radius / 1.5, &surface);
+        particles.update(sample_radius, &surface);
 
         d.draw_fps(0, 0);
     }
