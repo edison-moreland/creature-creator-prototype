@@ -1,8 +1,7 @@
 use crate::spatial_indexer::kd_indexer::KdContainer;
 use crate::surfaces::{gradient, on_surface};
-use std::f64::consts::PI;
-// use raylib::prelude::*;
 use nalgebra::{vector, Vector2, Vector3};
+use std::f64::consts::PI;
 
 pub struct Plane {
     o: Vector3<f32>,
@@ -24,12 +23,6 @@ impl Plane {
 
     pub fn from(&self, p: Vector2<f32>) -> Vector3<f32> {
         self.o + (self.u * p.x) + (self.v * p.y)
-    }
-
-    pub fn to(&self, p: Vector3<f32>) -> Vector2<f32> {
-        let op = p - self.o;
-
-        vector![self.u.dot(&op), self.v.dot(&op)]
     }
 }
 

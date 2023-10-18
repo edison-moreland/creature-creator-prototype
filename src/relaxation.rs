@@ -1,10 +1,9 @@
 use crate::spatial_indexer::kd_indexer::KdIndexer;
 use crate::spatial_indexer::SpatialIndexer;
 use crate::surfaces::gradient;
+use nalgebra::{vector, Vector3};
 use rayon::prelude::*;
 use std::ops::Neg;
-
-use nalgebra::{vector, Vector3};
 
 const REPULSION_AMPLITUDE: f32 = 6.0;
 const FEEDBACK: f32 = 15.0;
@@ -157,7 +156,7 @@ impl RelaxationSystem {
         desired_radius: f32,
         surface: impl Fn(Vector3<f32>) -> f32 + Send + Sync,
     ) {
-        for i in 0..UPDATE_ITERATIONS {
+        for _ in 0..UPDATE_ITERATIONS {
             // let start = Instant::now();
 
             self.set_particle_velocities(&surface);

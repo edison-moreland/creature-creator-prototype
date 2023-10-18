@@ -1,5 +1,5 @@
 use crate::spatial_indexer::SpatialIndexer;
-use nalgebra::{vector, Vector3};
+use nalgebra::Vector3;
 use std::fmt::Debug;
 use std::ops::Index;
 

@@ -6,9 +6,8 @@ mod surfaces;
 use crate::relaxation::RelaxationSystem;
 use crate::sampling::sample;
 use crate::surfaces::{ellipsoid, gradient, smooth_union, sphere, translate, union};
-use raylib::prelude::*;
-
 use nalgebra::{vector, Vector3};
+use raylib::prelude::*;
 
 fn surface_at(t: f32) -> impl Fn(Vector3<f32>) -> f32 {
     smooth_union(

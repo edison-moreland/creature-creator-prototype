@@ -1,8 +1,6 @@
 use nalgebra::{matrix, vector, Matrix4, Vector3};
-// use raylib::prelude::*;
 
 pub fn gradient(surface: impl Fn(Vector3<f32>) -> f32, p: Vector3<f32>) -> Vector3<f32> {
-    // TODO: What value should I use for h?
     let h = 0.0001;
 
     let dx = (surface(vector![p.x + h, p.y, p.z]) - surface(p)) / h;
