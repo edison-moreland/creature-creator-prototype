@@ -1,8 +1,6 @@
-use cocoa::appkit::NSView;
 use winit::dpi::{LogicalSize, PhysicalSize};
 use winit::event::StartCause;
 use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
-use winit::platform::macos::WindowExtMacOS;
 use winit::window::Window;
 use winit::{
     event::{Event, WindowEvent},
