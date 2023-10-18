@@ -1,10 +1,10 @@
 use crate::spatial_indexer::kd_indexer::KdIndexer;
 use crate::spatial_indexer::SpatialIndexer;
 use crate::surfaces::gradient;
-use raylib::prelude::*;
 use rayon::prelude::*;
 use std::ops::Neg;
-use std::time::Instant;
+
+use nalgebra::{vector, Vector3};
 
 const REPULSION_AMPLITUDE: f32 = 6.0;
 const FEEDBACK: f32 = 15.0;
@@ -17,22 +17,22 @@ const DEATH_COEFFICIENT: f32 = 0.7;
 const MAX_RADIUS_COEFFICIENT: f32 = 1.2;
 const DESIRED_REPULSION_ENERGY: f32 = REPULSION_AMPLITUDE * 0.8;
 
-fn random_velocity() -> Vector3 {
-    Vector3::new(rand::random(), rand::random(), rand::random()).normalized()
+fn random_velocity() -> Vector3<f32> {
+    Vector3::new(rand::random(), rand::random(), rand::random()).normalize()
 }
 
 // energy_contribution returns the energy of i due to j
-fn energy_contribution(i_repulsion_radius: f32, i: Vector3, j: Vector3) -> f32 {
+fn energy_contribution(i_repulsion_radius: f32, i: Vector3<f32>, j: Vector3<f32>) -> f32 {
     REPULSION_AMPLITUDE
-        * (i.distance_to(j).powf(2.0) / (2.0 * i_repulsion_radius).powf(2.0))
+        * ((i - j).magnitude().powf(2.0) / (2.0 * i_repulsion_radius).powf(2.0))
             .neg()
             .exp()
 }
 
 fn repulsion_energy(
-    position: Vector3,
+    position: Vector3<f32>,
     radius: f32,
-    neighbours: impl Iterator<Item = Vector3>,
+    neighbours: impl Iterator<Item = Vector3<f32>>,
 ) -> f32 {
     neighbours.fold(0.0, |energy, n_position| {
         energy + energy_contribution(radius, position, n_position)
@@ -40,9 +40,9 @@ fn repulsion_energy(
 }
 
 fn particle_radius(
-    position: Vector3,
+    position: Vector3<f32>,
     radius: f32,
-    neighbours: impl Iterator<Item = Vector3> + Clone,
+    neighbours: impl Iterator<Item = Vector3<f32>> + Clone,
 ) -> f32 {
     let re = repulsion_energy(position, radius, neighbours.clone());
 
@@ -52,7 +52,7 @@ fn particle_radius(
 
     // change in energy with respect to change in radius
     let temp: f32 = neighbours.fold(0.0, |sum, n_position| {
-        let dist = (position - n_position).length().powf(2.0);
+        let dist = (position - n_position).magnitude().powf(2.0);
 
         sum + (dist * energy_contribution(radius, position, n_position))
     });
@@ -71,35 +71,35 @@ fn particle_radius(
 }
 
 fn particle_velocity(
-    position: Vector3,
+    position: Vector3<f32>,
     radius: f32,
-    neighbours: impl Iterator<Item = (Vector3, f32)>,
-) -> Vector3 {
+    neighbours: impl Iterator<Item = (Vector3<f32>, f32)>,
+) -> Vector3<f32> {
     neighbours
-        .fold(rvec3(0, 0, 0), |dv, (n_position, n_radius)| {
+        .fold(vector![0.0, 0.0, 0.0], |dv, (n_position, n_radius)| {
             let rij = position - n_position;
 
-            let rei = (rij / radius.powf(2.0))
-                .scale_by(energy_contribution(radius, position, n_position));
+            let rei =
+                (rij / radius.powf(2.0)).scale(energy_contribution(radius, position, n_position));
 
             let rej = (rij / n_radius.powf(2.0))
-                .scale_by(energy_contribution(n_radius, n_position, position));
+                .scale(energy_contribution(n_radius, n_position, position));
 
             // println!("{:?} - {:?} = {:?}", rej, rej, rei - rej);
 
             dv + (rei + rej)
         })
-        .scale_by(radius.powf(2.0))
+        .scale(radius.powf(2.0))
 }
 
 fn constrain_to_surface(
-    surface: impl Fn(Vector3) -> f32,
-    position: Vector3,
-    velocity: Vector3,
-) -> Vector3 {
+    surface: impl Fn(Vector3<f32>) -> f32,
+    position: Vector3<f32>,
+    velocity: Vector3<f32>,
+) -> Vector3<f32> {
     let grad = gradient(&surface, position);
     velocity
-        - grad.scale_by((grad.dot(velocity) + (FEEDBACK * surface(position))) / (grad.dot(grad)))
+        - grad.scale((grad.dot(&velocity) + (FEEDBACK * surface(position))) / (grad.dot(&grad)))
 }
 
 fn should_die(radius: f32, desired_radius: f32) -> bool {
@@ -120,15 +120,15 @@ fn should_fission_energy(radius: f32, energy: f32, desired_radius: f32) -> bool 
 
 pub struct RelaxationSystem {
     position_index: KdIndexer,
-    position: Vec<Vector3>,
-    velocity: Vec<Vector3>,
+    position: Vec<Vector3<f32>>,
+    velocity: Vec<Vector3<f32>>,
     radius: Vec<f32>,
 }
 
 impl RelaxationSystem {
-    pub fn new(positions: Vec<Vector3>, sample_radius: f32) -> Self {
+    pub fn new(positions: Vec<Vector3<f32>>, sample_radius: f32) -> Self {
         let mut velocity = vec![];
-        velocity.resize(positions.len(), rvec3(0, 0, 0));
+        velocity.resize(positions.len(), vector![0.0, 0.0, 0.0]);
 
         let mut radius = vec![];
         radius.resize(positions.len(), sample_radius);
@@ -144,7 +144,7 @@ impl RelaxationSystem {
         }
     }
 
-    pub fn positions(&self) -> impl Iterator<Item = (Vector3, f32)> + '_ {
+    pub fn positions(&self) -> impl Iterator<Item = (Vector3<f32>, f32)> + '_ {
         self.position
             .iter()
             .copied()
@@ -152,7 +152,11 @@ impl RelaxationSystem {
         // .map(|(position, radius)| (position, radius))
     }
 
-    pub fn update(&mut self, desired_radius: f32, surface: impl Fn(Vector3) -> f32 + Send + Sync) {
+    pub fn update(
+        &mut self,
+        desired_radius: f32,
+        surface: impl Fn(Vector3<f32>) -> f32 + Send + Sync,
+    ) {
         for i in 0..UPDATE_ITERATIONS {
             // let start = Instant::now();
 
@@ -171,7 +175,7 @@ impl RelaxationSystem {
         }
     }
 
-    fn set_particle_velocities(&mut self, surface: impl Fn(Vector3) -> f32 + Sync) {
+    fn set_particle_velocities(&mut self, surface: impl Fn(Vector3<f32>) -> f32 + Sync) {
         // Update velocity to push samples away from each other
 
         self.velocity
@@ -204,7 +208,7 @@ impl RelaxationSystem {
         self.position
             .par_iter_mut()
             .enumerate()
-            .for_each(|(i, p)| *p += self.velocity[i].scale_by(ITERATION_T_STEP));
+            .for_each(|(i, p)| *p += self.velocity[i].scale(ITERATION_T_STEP));
 
         self.position_index.reindex(&self.position);
     }
@@ -241,7 +245,7 @@ impl RelaxationSystem {
             let radius = self.radius[i];
 
             // Skip particles that are not at equilibrium
-            if velocity.length() >= (EQUILIBRIUM_SPEED * radius) {
+            if velocity.magnitude() >= (EQUILIBRIUM_SPEED * radius) {
                 continue;
             }
 
@@ -282,15 +286,15 @@ impl RelaxationSystem {
 
             let new_radius = radius / (2.0_f32).sqrt();
 
-            let new_velocity = random_velocity().scale_by(radius);
+            let new_velocity = random_velocity().scale(radius);
             self.position[*i] += new_velocity;
             self.position.push(position - new_velocity);
 
             self.radius[*i] = new_radius;
             self.radius.push(new_radius);
 
-            self.velocity[*i] = rvec3(0, 0, 0);
-            self.velocity.push(rvec3(0, 0, 0));
+            self.velocity[*i] = vector![0.0, 0.0, 0.0];
+            self.velocity.push(vector![0.0, 0.0, 0.0]);
         }
 
         for i in indices_to_die.iter().rev() {

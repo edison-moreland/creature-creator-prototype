@@ -8,12 +8,20 @@ use crate::sampling::sample;
 use crate::surfaces::{ellipsoid, gradient, smooth_union, sphere, translate, union};
 use raylib::prelude::*;
 
-fn surface_at(t: f32) -> impl Fn(Vector3) -> f32 {
+use nalgebra::{vector, Vector3};
+
+fn surface_at(t: f32) -> impl Fn(Vector3<f32>) -> f32 {
     smooth_union(
         sphere(10.0),
         union(
-            translate(rvec3((t).sin() * 10.0, 0.0, 0.0), ellipsoid(10.0, 5.0, 5.0)),
-            translate(rvec3(0.0, 0.0, (t).cos() * 10.0), ellipsoid(5.0, 5.0, 10.0)),
+            translate(
+                vector![(t).sin() * 10.0, 0.0, 0.0],
+                ellipsoid(10.0, 5.0, 5.0),
+            ),
+            translate(
+                vector![0.0, 0.0, (t).cos() * 10.0],
+                ellipsoid(5.0, 5.0, 10.0),
+            ),
         ),
         0.5,
     )
@@ -23,13 +31,13 @@ fn main() {
     let (mut rl, thread) = raylib::init().size(640, 480).title("Hello, World").build();
 
     let camera = Camera3D::perspective(
-        Vector3::new(25.0, 25.0, 25.0),
-        Vector3::new(0.0, 0.0, 0.0),
-        Vector3::up(),
+        rvec3(25.0, 25.0, 25.0),
+        rvec3(0.0, 0.0, 0.0),
+        math::Vector3::up(),
         40.0,
     );
 
-    let seed = rvec3(0.0, 10.0, 0.0);
+    let seed = vector![0.0, 10.0, 0.0];
     let sample_radius = 0.5;
 
     let mut t = 0.0;
@@ -49,7 +57,7 @@ fn main() {
         {
             let mut d3d = d.begin_mode3D(camera);
             for (point, radius) in particles.positions() {
-                let normal = gradient(&surface, point).normalized();
+                let normal = gradient(&surface, point).normalize();
 
                 let point_color = Color::color_from_normalized(Vector4::new(
                     normal.x.abs(),
@@ -58,8 +66,10 @@ fn main() {
                     1.0,
                 ));
 
+                let true_position = point - normal.scale(radius * 2.0);
+
                 d3d.draw_sphere(
-                    point - normal.scale_by(radius * 2.0),
+                    rvec3(true_position.x, true_position.y, true_position.z),
                     radius * 2.0,
                     point_color,
                 )
