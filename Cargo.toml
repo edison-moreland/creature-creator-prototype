@@ -10,7 +10,7 @@ nalgebra = "0.32.3"
 rand = "0.8.5"
 rayon = "1.8.0"
 
-winit = "0.29.1-beta"
+winit = "0.28.7"
 
 # Metal deps:
 metal = "0.26.0"
