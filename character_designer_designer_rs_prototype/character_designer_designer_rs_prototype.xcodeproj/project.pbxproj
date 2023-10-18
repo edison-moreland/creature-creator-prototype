@@ -18,7 +18,7 @@
 /* Begin PBXLegacyTarget section */
 		B712615B2ADFAF83004A9B6D /* character_designer_designer_rs_prototype */ = {
 			isa = PBXLegacyTarget;
-			buildArgumentsString = build;
+			buildArgumentsString = "build --release";
 			buildConfigurationList = B712615E2ADFAF83004A9B6D /* Build configuration list for PBXLegacyTarget "character_designer_designer_rs_prototype" */;
 			buildPhases = (
 			);

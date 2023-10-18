@@ -41,7 +41,7 @@
       allowLocationSimulation = "YES">
       <PathRunnable
          runnableDebuggingMode = "0"
-         FilePath = "/Users/edison/Development/character_designer_designer_rs_prototype/target/debug/character_designer_designer">
+         FilePath = "/Users/edison/Development/character_designer_designer_rs_prototype/target/release/character_designer_designer">
       </PathRunnable>
    </LaunchAction>
    <ProfileAction

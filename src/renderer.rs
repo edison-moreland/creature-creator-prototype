@@ -9,7 +9,7 @@ use metal::objc::runtime::YES;
 use metal::{
     Buffer, CommandQueue, Device, DeviceRef, Function, MTLPixelFormat, MTLPrimitiveType,
     MTLResourceOptions, MTLVertexFormat, MTLVertexStepFunction, MetalDrawableRef, MetalLayer,
-    NSUInteger, RenderCommandEncoderRef, RenderPipelineDescriptor, RenderPipelineState,
+    NSRange, NSUInteger, RenderCommandEncoderRef, RenderPipelineDescriptor, RenderPipelineState,
     VertexAttributeDescriptor, VertexBufferLayoutDescriptor, VertexDescriptor,
 };
 use nalgebra::{vector, Matrix4};
@@ -275,13 +275,21 @@ fn prepare_vertex_buffer(device: &DeviceRef) -> Buffer {
     )
 }
 
+fn prepare_instance_buffer(device: &DeviceRef) -> Buffer {
+    device.new_buffer(
+        (size_of::<Instance>() * 10000) as u64,
+        MTLResourceOptions::StorageModeManaged,
+    )
+}
+
 fn prepare_camera_matrices(aspect_ratio: f32) -> (Vec<f32>, Vec<f32>) {
     // TODO: Something something uniforms struct, make it one buffer
     // Projection matrix
     let proj = Matrix4::new_perspective(aspect_ratio, 30.0 * (PI / 180.0), 1.0, 1000.0);
 
     // View matrix
-    let view = Matrix4::new_translation(&vector![0.0, 0.0, -30.0]);
+    let view = Matrix4::new_translation(&vector![0.0, 0.0, -40.0])
+        * Matrix4::new_rotation(vector![10.0, 0.0, 0.0]);
 
     return (proj.as_slice().to_vec(), view.as_slice().to_vec());
 }
@@ -292,6 +300,7 @@ pub struct FastBallRenderer {
     command_queue: CommandQueue,
     pipeline: RenderPipelineState,
     vertex_buffer: Buffer,
+    pub instance_buffer: Buffer,
 }
 
 impl FastBallRenderer {
@@ -305,12 +314,15 @@ impl FastBallRenderer {
 
         let vertex_buffer = prepare_vertex_buffer(&device);
 
+        let instance_buffer = prepare_instance_buffer(&device);
+
         FastBallRenderer {
             device,
             layer,
             command_queue,
             pipeline,
             vertex_buffer,
+            instance_buffer,
         }
     }
 
@@ -331,16 +343,29 @@ impl FastBallRenderer {
 
         let size = self.layer.drawable_size();
 
+        // Update instance buffer
+        if self.instance_buffer.allocated_size() < (instances.len() * size_of::<Instance>()) as u64
+        {
+            panic!("HEY THAT:S TOO BIG!!! HEY !!")
+        }
+        unsafe {
+            std::ptr::copy(
+                instances.as_ptr(),
+                self.instance_buffer.contents() as *mut Instance,
+                instances.len(),
+            );
+        }
+        self.instance_buffer.did_modify_range(NSRange::new(
+            0,
+            (instances.len() * size_of::<Instance>()) as u64,
+        ));
+
         let (proj, view) = prepare_camera_matrices((size.width / size.height) as f32);
 
         self.render_pass(drawable, |encoder| {
             encoder.set_render_pipeline_state(&self.pipeline);
             encoder.set_vertex_buffer(0, Some(&self.vertex_buffer), 0);
-            encoder.set_vertex_bytes(
-                1,
-                (instances.len() * size_of::<Instance>()) as NSUInteger,
-                instances.as_ptr() as *const _,
-            );
+            encoder.set_vertex_buffer(1, Some(&self.instance_buffer), 0);
             encoder.set_vertex_bytes(
                 2,
                 (proj.len() * size_of::<f32>()) as NSUInteger,
