@@ -161,19 +161,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fd16c4719339c4530435d38e511904438d07cce7950afa3718a84ac36c10e89e"
 
 [[package]]
-name = "character_designer_designer"
-version = "0.1.0"
-dependencies = [
- "cocoa",
- "core-graphics-types",
- "metal",
- "nalgebra",
- "rand",
- "rayon",
- "winit",
-]
-
-[[package]]
 name = "cocoa"
 version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -263,6 +250,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b540bd8bc810d3885c6ea91e2018302f68baba2129ab3e88f32389ee9370880d"
 dependencies = [
  "cfg-if",
+]
+
+[[package]]
+name = "creature_creator"
+version = "0.1.0"
+dependencies = [
+ "cocoa",
+ "core-graphics-types",
+ "metal",
+ "nalgebra",
+ "rand",
+ "rayon",
+ "winit",
 ]
 
 [[package]]
