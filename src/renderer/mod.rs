@@ -1,6 +1,7 @@
 use std::f32::consts::PI;
 use std::mem;
 use std::mem::size_of;
+use std::pin::Pin;
 
 use cocoa::appkit::NSView;
 use cocoa::base::id;
@@ -22,7 +23,7 @@ use winit::window::Window;
 
 const SPHERE_SLICES: f32 = 16.0 / 2.0;
 const SPHERE_RINGS: f32 = 16.0 / 2.0;
-
+const MAX_INSTANCE_COUNT: usize = 10000;
 const SHADER_LIBRARY: &[u8] = include_bytes!("shader.metallib");
 
 #[repr(C)]
@@ -30,6 +31,7 @@ struct Vertex {
     position: [f32; 3],
 }
 
+#[derive(Copy, Clone)]
 #[repr(C)]
 pub struct Instance {
     pub center: [f32; 3],
@@ -214,11 +216,21 @@ fn prepare_vertex_buffer(device: &DeviceRef) -> Buffer {
     )
 }
 
-fn prepare_instance_buffer(device: &DeviceRef) -> Buffer {
-    device.new_buffer(
-        (size_of::<Instance>() * 100000) as u64,
-        MTLResourceOptions::StorageModeManaged,
-    )
+fn prepare_instance_buffer(device: &DeviceRef) -> (Buffer, Pin<Box<[Instance; MAX_INSTANCE_COUNT]>>) {
+    let instance_array = Box::pin([Instance{
+        center: [0.0, 0.0, 0.0],
+        radius: 0.0,
+        normal: [0.0, 0.0, 0.0],
+    }; MAX_INSTANCE_COUNT]);
+
+    let buffer = device.new_buffer_with_bytes_no_copy(
+        instance_array.as_ptr() as *const _,
+        (size_of::<Instance>() * MAX_INSTANCE_COUNT) as u64,
+        MTLResourceOptions::StorageModeShared,
+        None
+    );
+
+    (buffer, instance_array)
 }
 
 fn prepare_depth_target(device: &DeviceRef, size: PhysicalSize<u32>) -> Texture {
@@ -226,7 +238,7 @@ fn prepare_depth_target(device: &DeviceRef, size: PhysicalSize<u32>) -> Texture 
     texture_descriptor.set_width(size.width as u64);
     texture_descriptor.set_height(size.height as u64);
     texture_descriptor.set_pixel_format(MTLPixelFormat::Depth32Float);
-    texture_descriptor.set_storage_mode(MTLStorageMode::Private);
+    texture_descriptor.set_storage_mode(MTLStorageMode::Memoryless);
     texture_descriptor.set_usage(MTLTextureUsage::RenderTarget);
 
     device.new_texture(&texture_descriptor)
@@ -277,6 +289,7 @@ pub struct FastBallRenderer {
     depth_target: Texture,
     vertex_buffer: Buffer,
     instance_buffer: Buffer,
+    instance_array: Pin<Box<[Instance; MAX_INSTANCE_COUNT]>>,
     uniform_buffer: Buffer,
 
     camera_position: Vector3<f32>,
@@ -298,7 +311,7 @@ impl FastBallRenderer {
         let depth_state = create_depth_state(&device);
 
         let vertex_buffer = prepare_vertex_buffer(&device);
-        let instance_buffer = prepare_instance_buffer(&device);
+        let (instance_buffer, instance_array) = prepare_instance_buffer(&device);
         let uniform_buffer = prepare_uniform_buffer(&device, size.width as f32 / size.height as f32, camera_position, camera_rotation);
 
         FastBallRenderer {
@@ -310,6 +323,7 @@ impl FastBallRenderer {
             pipeline,
             vertex_buffer,
             instance_buffer,
+            instance_array,
             uniform_buffer,
             camera_position,
             camera_rotation,
@@ -328,28 +342,23 @@ impl FastBallRenderer {
         self.layer.set_contents_scale(scale_factor);
     }
 
-    pub fn draw(&self, instances: Vec<Instance>) {
+    fn update_instance_buffer(&mut self, instances: impl Iterator<Item=Instance>) {
+        for (i, instance) in instances.enumerate() {
+            self.instance_array[i] = instance
+        }
+    }
+
+    pub fn draw(&mut self, instances: impl Iterator<Item=Instance> + ExactSizeIterator) {
+        let instance_count = instances.len();
+        if instance_count > MAX_INSTANCE_COUNT {
+            panic!("HEY THAT:S TOO BIG!!! HEY !!")
+        }
+        self.update_instance_buffer(instances);
+
         let drawable = match self.layer.next_drawable() {
             Some(drawable) => drawable,
             None => return,
         };
-
-        // Update instance buffer
-        if self.instance_buffer.allocated_size() < (instances.len() * size_of::<Instance>()) as u64
-        {
-            panic!("HEY THAT:S TOO BIG!!! HEY !!")
-        }
-        unsafe {
-            std::ptr::copy(
-                instances.as_ptr(),
-                self.instance_buffer.contents() as *mut Instance,
-                instances.len(),
-            );
-        }
-        self.instance_buffer.did_modify_range(NSRange::new(
-            0,
-            (instances.len() * size_of::<Instance>()) as u64,
-        ));
 
         self.render_pass(drawable, |encoder| {
             encoder.set_render_pipeline_state(&self.pipeline);
@@ -362,7 +371,7 @@ impl FastBallRenderer {
                 MTLPrimitiveType::Triangle,
                 0,
                 (SPHERE_RINGS as u64 + 2) * SPHERE_SLICES as u64 * 6,
-                instances.len() as NSUInteger,
+                instance_count as NSUInteger,
             )
         })
     }

@@ -135,7 +135,7 @@ impl RelaxationSystem {
         }
     }
 
-    pub fn positions(&self) -> impl Iterator<Item = (Vector3<f32>, f32)> + '_ {
+    pub fn positions(&self) -> impl Iterator<Item = (Vector3<f32>, f32)> + ExactSizeIterator + '_ {
         self.position
             .iter()
             .copied()

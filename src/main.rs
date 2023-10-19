@@ -109,7 +109,21 @@ impl App {
 
         self.particle_system.update(self.desired_radius, &surface);
 
-        let instances: Vec<Instance> = self
+        // let instances: Vec<Instance> = self
+        //     .particle_system
+        //     .positions()
+        //     .map(|(point, radius)| {
+        //         let normal = gradient(&surface, point).normalize();
+        //
+        //         Instance {
+        //             center: [point.x, point.y, point.z],
+        //             normal: [normal.x, normal.y, normal.z],
+        //             radius,
+        //         }
+        //     })
+        //     .collect();
+
+        self.renderer.draw(self
             .particle_system
             .positions()
             .map(|(point, radius)| {
@@ -120,10 +134,7 @@ impl App {
                     normal: [normal.x, normal.y, normal.z],
                     radius,
                 }
-            })
-            .collect();
-
-        self.renderer.draw(instances)
+            }))
     }
 }
 
