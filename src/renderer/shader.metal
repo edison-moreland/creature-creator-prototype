@@ -5,7 +5,7 @@ struct VertexIn {
     float4 position [[attribute(0)]];
     float4 center   [[attribute(1)]];
     float radius    [[attribute(2)]];
-    float4 color    [[attribute(3)]];
+    float4 normal    [[attribute(3)]];
 };
 
 struct VertexOut {
@@ -21,9 +21,14 @@ struct Uniform {
 vertex VertexOut vertex_main(VertexIn in [[stage_in]],
                              constant Uniform &uniform [[buffer(2)]])
 {
+    float radius = in.radius * 2;
+    float4 origin = in.center - (in.normal * radius);
+
+    // TODO: better lighting
+
     VertexOut out;
-    out.position = (uniform.projection * uniform.view) * float4(in.center.xyz + in.radius * in.position.xyz, 1.0f);
-    out.color = in.color;
+    out.position = (uniform.projection * uniform.view) * float4(origin.xyz + radius * in.position.xyz, 1.0f);
+    out.color = abs(in.normal);
     return out;
 }
 

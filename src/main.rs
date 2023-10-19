@@ -115,12 +115,10 @@ impl App {
             .map(|(point, radius)| {
                 let normal = gradient(&surface, point).normalize();
 
-                let origin = point - normal.scale(radius * 2.0);
-
                 Instance {
-                    center: [origin.x, origin.y, origin.z],
-                    radius: radius * 2.0,
-                    color: [normal.x.abs(), normal.y.abs(), normal.z.abs()],
+                    center: [point.x, point.y, point.z],
+                    radius: radius,
+                    normal: [normal.x, normal.y, normal.z],
                 }
             })
             .collect();

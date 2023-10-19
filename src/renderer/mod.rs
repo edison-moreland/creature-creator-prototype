@@ -34,7 +34,7 @@ struct Vertex {
 pub struct Instance {
     pub center: [f32; 3],
     pub radius: f32,
-    pub color: [f32; 3],
+    pub normal: [f32; 3],
 }
 
 #[repr(C)]
