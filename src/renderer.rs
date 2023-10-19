@@ -7,18 +7,21 @@ use cocoa::base::id;
 use core_graphics_types::geometry::CGSize;
 use metal::objc::runtime::YES;
 use metal::{
-    Buffer, CommandQueue, Device, DeviceRef, Function, MTLPixelFormat, MTLPrimitiveType,
-    MTLResourceOptions, MTLVertexFormat, MTLVertexStepFunction, MetalDrawableRef, MetalLayer,
-    NSRange, NSUInteger, RenderCommandEncoderRef, RenderPipelineDescriptor, RenderPipelineState,
-    VertexAttributeDescriptor, VertexBufferLayoutDescriptor, VertexDescriptor,
+    Buffer, CommandQueue, DepthStencilDescriptor, DepthStencilState, Device, DeviceRef, Function,
+    MTLClearColor, MTLCompareFunction, MTLLoadAction, MTLPixelFormat, MTLPrimitiveType,
+    MTLResourceOptions, MTLStorageMode, MTLStoreAction, MTLTextureUsage, MTLVertexFormat,
+    MTLVertexStepFunction, MetalDrawableRef, MetalLayer, NSRange, NSUInteger,
+    RenderCommandEncoderRef, RenderPassDepthAttachmentDescriptor, RenderPipelineDescriptor,
+    RenderPipelineState, Texture, TextureDescriptor, VertexAttributeDescriptor,
+    VertexBufferLayoutDescriptor, VertexDescriptor,
 };
 use nalgebra::{vector, Matrix4};
 use winit::dpi::PhysicalSize;
 use winit::platform::macos::WindowExtMacOS;
 use winit::window::Window;
 
-const SPHERE_SLICES: f32 = 16.0;
-const SPHERE_RINGS: f32 = 16.0;
+const SPHERE_SLICES: f32 = 16.0 / 4.0;
+const SPHERE_RINGS: f32 = 16.0 / 4.0;
 
 const SHADER_METALLIB: &[u8] = include_bytes!("shader.metallib");
 
@@ -73,6 +76,7 @@ fn create_pipeline_descriptor(
     let pipeline_descriptor = RenderPipelineDescriptor::new();
     pipeline_descriptor.set_vertex_function(Some(&vertex_shader));
     pipeline_descriptor.set_fragment_function(Some(&fragment_shader));
+    pipeline_descriptor.set_depth_attachment_pixel_format(MTLPixelFormat::Depth32Float);
 
     let attachment = pipeline_descriptor
         .color_attachments()
@@ -277,9 +281,28 @@ fn prepare_vertex_buffer(device: &DeviceRef) -> Buffer {
 
 fn prepare_instance_buffer(device: &DeviceRef) -> Buffer {
     device.new_buffer(
-        (size_of::<Instance>() * 10000) as u64,
+        (size_of::<Instance>() * 100000) as u64,
         MTLResourceOptions::StorageModeManaged,
     )
+}
+
+fn prepare_depth_buffer(device: &DeviceRef, size: PhysicalSize<u32>) -> Texture {
+    let texture_descriptor = TextureDescriptor::new();
+    texture_descriptor.set_width(size.width as u64);
+    texture_descriptor.set_height(size.height as u64);
+    texture_descriptor.set_pixel_format(MTLPixelFormat::Depth32Float);
+    texture_descriptor.set_storage_mode(MTLStorageMode::Private);
+    texture_descriptor.set_usage(MTLTextureUsage::RenderTarget);
+
+    device.new_texture(&texture_descriptor)
+}
+
+fn create_depth_state(device: &DeviceRef) -> DepthStencilState {
+    let depth_stencil_descriptor = DepthStencilDescriptor::new();
+    depth_stencil_descriptor.set_depth_compare_function(MTLCompareFunction::LessEqual);
+    depth_stencil_descriptor.set_depth_write_enabled(true);
+
+    device.new_depth_stencil_state(&depth_stencil_descriptor)
 }
 
 fn prepare_camera_matrices(aspect_ratio: f32) -> (Vec<f32>, Vec<f32>) {
@@ -299,8 +322,10 @@ pub struct FastBallRenderer {
     layer: MetalLayer,
     command_queue: CommandQueue,
     pipeline: RenderPipelineState,
+    depth_state: DepthStencilState,
     vertex_buffer: Buffer,
-    pub instance_buffer: Buffer,
+    instance_buffer: Buffer,
+    depth_buffer: Texture,
 }
 
 impl FastBallRenderer {
@@ -312,6 +337,9 @@ impl FastBallRenderer {
 
         let pipeline = create_pipeline(&device, SHADER_METALLIB, "vertex_main", "fragment_main");
 
+        let depth_state = create_depth_state(&device);
+        let depth_buffer = prepare_depth_buffer(&device, window.inner_size());
+
         let vertex_buffer = prepare_vertex_buffer(&device);
 
         let instance_buffer = prepare_instance_buffer(&device);
@@ -320,15 +348,19 @@ impl FastBallRenderer {
             device,
             layer,
             command_queue,
+            depth_state,
+            depth_buffer,
             pipeline,
             vertex_buffer,
             instance_buffer,
         }
     }
 
-    pub fn resized(&self, new_size: PhysicalSize<u32>) {
+    pub fn resized(&mut self, new_size: PhysicalSize<u32>) {
         self.layer
-            .set_drawable_size(CGSize::new(new_size.width as f64, new_size.height as f64))
+            .set_drawable_size(CGSize::new(new_size.width as f64, new_size.height as f64));
+
+        self.depth_buffer = prepare_depth_buffer(&self.device, new_size);
     }
 
     pub fn rescaled(&self, scale_factor: f64) {
@@ -364,6 +396,7 @@ impl FastBallRenderer {
 
         self.render_pass(drawable, |encoder| {
             encoder.set_render_pipeline_state(&self.pipeline);
+            encoder.set_depth_stencil_state(&self.depth_state);
             encoder.set_vertex_buffer(0, Some(&self.vertex_buffer), 0);
             encoder.set_vertex_buffer(1, Some(&self.instance_buffer), 0);
             encoder.set_vertex_bytes(
@@ -393,9 +426,15 @@ impl FastBallRenderer {
         let render_pass = metal::RenderPassDescriptor::new();
         let color_attachment = render_pass.color_attachments().object_at(0).unwrap();
         color_attachment.set_texture(Some(drawable.texture()));
-        color_attachment.set_load_action(metal::MTLLoadAction::Clear);
-        color_attachment.set_clear_color(metal::MTLClearColor::new(0.0, 0.0, 0.0, 1.0));
-        color_attachment.set_store_action(metal::MTLStoreAction::Store);
+        color_attachment.set_load_action(MTLLoadAction::Clear);
+        color_attachment.set_clear_color(MTLClearColor::new(0.0, 0.0, 0.0, 1.0));
+        color_attachment.set_store_action(MTLStoreAction::Store);
+
+        let depth_attachment = render_pass.depth_attachment().unwrap();
+        depth_attachment.set_texture(Some(&self.depth_buffer));
+        depth_attachment.set_clear_depth(1.0);
+        depth_attachment.set_load_action(MTLLoadAction::Clear);
+        depth_attachment.set_store_action(MTLStoreAction::Store);
 
         let command_buffer = self.command_queue.new_command_buffer();
         let encoder = command_buffer.new_render_command_encoder(&render_pass);

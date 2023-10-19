@@ -132,13 +132,9 @@ impl App {
         self.renderer.rescaled(scale_factor);
     }
 
-    fn resized(&self, new_size: PhysicalSize<u32>) {
+    fn resized(&mut self, new_size: PhysicalSize<u32>) {
         self.renderer.resized(new_size);
     }
-
-    // fn update(&mut self) {
-    //
-    // }
 
     fn draw(&mut self) {
         self.t += 0.03;
@@ -146,7 +142,7 @@ impl App {
 
         self.particle_system.update(self.desired_radius, &surface);
 
-        let mut instances: Vec<Instance> = self
+        let instances: Vec<Instance> = self
             .particle_system
             .positions()
             .map(|(point, radius)| {
@@ -156,13 +152,11 @@ impl App {
 
                 Instance {
                     center: [origin.x, origin.y, origin.z],
-                    radius: radius,
+                    radius: radius * 2.0,
                     color: [normal.x.abs(), normal.y.abs(), normal.z.abs()],
                 }
             })
             .collect();
-
-        instances.par_sort_unstable_by(|r, l| r.center[2].total_cmp(&l.center[2]).reverse());
 
         self.renderer.draw(instances)
     }
@@ -183,7 +177,7 @@ fn main() {
             WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
                 app.as_ref().unwrap().scale_factor_changed(scale_factor);
             }
-            WindowEvent::Resized(size) => app.as_ref().unwrap().resized(size),
+            WindowEvent::Resized(size) => app.as_mut().unwrap().resized(size),
             _ => (),
         },
         Event::MainEventsCleared => app.as_mut().unwrap().draw(),
