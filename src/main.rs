@@ -117,8 +117,8 @@ impl App {
 
                 Instance {
                     center: [point.x, point.y, point.z],
-                    radius: radius,
                     normal: [normal.x, normal.y, normal.z],
+                    radius,
                 }
             })
             .collect();
