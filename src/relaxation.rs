@@ -45,28 +45,20 @@ fn particle_radius(
 ) -> f32 {
     let re = repulsion_energy(position, radius, neighbours.clone());
 
-    // let desired_re = REPULSION_AMPLITUDE * DESIRED_REPULSION_ENERGY_COEFFICIENT;
-
+    // desired change in energy
     let re_delta = -(FEEDBACK * (re - DESIRED_REPULSION_ENERGY));
 
     // change in energy with respect to change in radius
-    let temp: f32 = neighbours.fold(0.0, |sum, n_position| {
+    let di_ai = (1.0 / radius.powf(3.0)) * neighbours.fold(0.0, |sum, n_position| {
         let dist = (position - n_position).magnitude().powf(2.0);
 
         sum + (dist * energy_contribution(radius, position, n_position))
     });
-    let di_ai = (1.0 / radius.powf(3.0)) * temp;
 
     // Radius change to bring us to desired energy
     let radius_delta = re_delta / (di_ai + 10.0);
 
-    // println!("{:?}", radius_delta);
-
-    let new_radius = radius + (radius_delta * ITERATION_T_STEP);
-
-    // println!("{:?} = {:?} + {:?}", new_radius, radius, radius_delta);
-
-    new_radius
+    radius + (radius_delta * ITERATION_T_STEP)
 }
 
 fn particle_velocity(
@@ -148,7 +140,6 @@ impl RelaxationSystem {
             .iter()
             .copied()
             .zip(self.radius.iter().copied())
-        // .map(|(position, radius)| (position, radius))
     }
 
     pub fn update(
@@ -157,20 +148,10 @@ impl RelaxationSystem {
         surface: impl Fn(Vector3<f32>) -> f32 + Send + Sync,
     ) {
         for _ in 0..UPDATE_ITERATIONS {
-            // let start = Instant::now();
-
             self.set_particle_velocities(&surface);
             self.update_particle_positions();
             self.update_particle_radii();
             self.split_kill_particles(desired_radius);
-
-            // println!(
-            //     "Pass {:?}, {:?}, Fission/Death: {:?}/{:?} ",
-            //     i,
-            //     start.elapsed(),
-            //     indices_to_fission.len(),
-            //     indices_to_die.len()
-            // );
         }
     }
 

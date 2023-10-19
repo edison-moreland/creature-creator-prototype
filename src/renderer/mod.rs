@@ -15,13 +15,13 @@ use metal::{
     RenderPipelineState, Texture, TextureDescriptor, VertexAttributeDescriptor,
     VertexBufferLayoutDescriptor, VertexDescriptor,
 };
-use nalgebra::{vector, Matrix4};
+use nalgebra::{vector, Matrix4, Vector3};
 use winit::dpi::PhysicalSize;
 use winit::platform::macos::WindowExtMacOS;
 use winit::window::Window;
 
-const SPHERE_SLICES: f32 = 16.0 / 4.0;
-const SPHERE_RINGS: f32 = 16.0 / 4.0;
+const SPHERE_SLICES: f32 = 16.0 / 2.0;
+const SPHERE_RINGS: f32 = 16.0 / 2.0;
 
 const SHADER_LIBRARY: &[u8] = include_bytes!("shader.metallib");
 
@@ -171,7 +171,7 @@ fn sphere_vertices(rings: f32, slices: f32) -> Vec<Vertex> {
     // This method of sphere vert generation was yoinked from raylib <3
 
     let mut data: Vec<Vertex> = vec![];
-    data.reserve((rings + 2) * slices * 6);
+    data.reserve(((rings + 2.0) * slices * 6.0) as usize);
 
     let deg2rad = PI / 180.0;
 
@@ -240,13 +240,17 @@ fn create_depth_state(device: &DeviceRef) -> DepthStencilState {
     device.new_depth_stencil_state(&depth_stencil_descriptor)
 }
 
-fn prepare_uniforms(aspect_ratio: f32) -> Uniforms {
+fn prepare_uniforms(aspect_ratio: f32, camera_position: Vector3<f32>, camera_rotation: Vector3<f32>) -> Uniforms {
+    // TODO: Am I doing any of this right??
+
     // Projection matrix
     let proj = Matrix4::new_perspective(aspect_ratio, 30.0 * (PI / 180.0), 1.0, 1000.0);
 
     // View matrix
-    let view = Matrix4::new_translation(&vector![0.0, 0.0, -40.0])
-        * Matrix4::new_rotation(vector![10.0, 0.0, 0.0]);
+    let view = Matrix4::new_translation(&-camera_position)
+        * Matrix4::new_rotation(vector![camera_rotation.x *(PI / 180.0), 0.0, 0.0])
+        * Matrix4::new_rotation(vector![0.0, camera_rotation.y * (PI / 180.0), 0.0])
+        * Matrix4::new_rotation(vector![0.0, 0.0, camera_rotation.z * (PI / 180.0)]);
 
     Uniforms {
         projection: proj.as_slice().to_vec().try_into().unwrap(),
@@ -254,8 +258,8 @@ fn prepare_uniforms(aspect_ratio: f32) -> Uniforms {
     }
 }
 
-fn prepare_uniform_buffer(device: &DeviceRef, aspect_ratio: f32) -> Buffer {
-    let data = [prepare_uniforms(aspect_ratio)];
+fn prepare_uniform_buffer(device: &DeviceRef, aspect_ratio: f32, camera_position: Vector3<f32>, camera_rotation: Vector3<f32>) -> Buffer {
+    let data = [prepare_uniforms(aspect_ratio, camera_position, camera_rotation)];
 
     device.new_buffer_with_data(
         data.as_ptr() as *const _,
@@ -274,10 +278,13 @@ pub struct FastBallRenderer {
     vertex_buffer: Buffer,
     instance_buffer: Buffer,
     uniform_buffer: Buffer,
+
+    camera_position: Vector3<f32>,
+    camera_rotation: Vector3<f32>,
 }
 
 impl FastBallRenderer {
-    pub fn new(window: &Window) -> Self {
+    pub fn new(window: &Window, camera_position: Vector3<f32>, camera_rotation: Vector3<f32>) -> Self {
         let device = Device::system_default().expect("no device found");
         let command_queue = device.new_command_queue();
 
@@ -292,7 +299,7 @@ impl FastBallRenderer {
 
         let vertex_buffer = prepare_vertex_buffer(&device);
         let instance_buffer = prepare_instance_buffer(&device);
-        let uniform_buffer = prepare_uniform_buffer(&device, size.width as f32/size.height as f32);
+        let uniform_buffer = prepare_uniform_buffer(&device, size.width as f32/size.height as f32, camera_position, camera_rotation);
 
         FastBallRenderer {
             device,
@@ -303,7 +310,9 @@ impl FastBallRenderer {
             pipeline,
             vertex_buffer,
             instance_buffer,
-            uniform_buffer
+            uniform_buffer,
+            camera_position,
+            camera_rotation,
         }
     }
 
@@ -312,7 +321,7 @@ impl FastBallRenderer {
             .set_drawable_size(CGSize::new(new_size.width as f64, new_size.height as f64));
 
         self.depth_target = prepare_depth_target(&self.device, new_size);
-        self.uniform_buffer = prepare_uniform_buffer(&self.device, new_size.width as f32/new_size.height as f32);
+        self.uniform_buffer = prepare_uniform_buffer(&self.device, new_size.width as f32/new_size.height as f32, self.camera_position, self.camera_rotation);
     }
 
     pub fn rescaled(&self, scale_factor: f64) {

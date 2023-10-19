@@ -56,14 +56,10 @@ impl App {
             .build(&event_loop)
             .unwrap();
 
-        let renderer = FastBallRenderer::new(&window);
+        let renderer = FastBallRenderer::new(&window, vector![0.0, 0.5,50.0], vector![45.0, 45.0, 0.0]);
 
-        let seed = vector![0.0, 10.0, 0.0];
         let sample_radius = 0.5;
-
-        let surface = surface_at(0.0);
-        let points = sample(surface, seed, sample_radius);
-
+        let points = sample(surface_at(0.0), vector![0.0, 10.0, 0.0], sample_radius);
         let particle_system = RelaxationSystem::new(points, sample_radius);
 
         App {
