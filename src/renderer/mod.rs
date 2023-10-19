@@ -1,7 +1,9 @@
+mod shared;
+
 use std::f32::consts::PI;
 use std::mem;
 use std::mem::size_of;
-use std::pin::Pin;
+use std::ops::{Deref, DerefMut};
 
 use cocoa::appkit::NSView;
 use cocoa::base::id;
@@ -16,16 +18,20 @@ use metal::{
     RenderPipelineState, Texture, TextureDescriptor, VertexAttributeDescriptor,
     VertexBufferLayoutDescriptor, VertexDescriptor,
 };
+use metal::foreign_types::ForeignType;
 use nalgebra::{vector, Matrix4, Vector3};
 use winit::dpi::PhysicalSize;
 use winit::platform::macos::WindowExtMacOS;
 use winit::window::Window;
+use crate::renderer::shared::Shared;
 
 const SPHERE_SLICES: f32 = 16.0 / 2.0;
 const SPHERE_RINGS: f32 = 16.0 / 2.0;
+const SPHERE_VERTEX_COUNT: usize = (SPHERE_RINGS as usize + 2) * SPHERE_SLICES as usize * 6;
 const MAX_INSTANCE_COUNT: usize = 10000;
 const SHADER_LIBRARY: &[u8] = include_bytes!("shader.metallib");
 
+#[derive(Copy, Clone)]
 #[repr(C)]
 struct Vertex {
     position: [f32; 3],
@@ -169,11 +175,13 @@ fn create_pipeline_descriptor(
 }
 
 
-fn sphere_vertices(rings: f32, slices: f32) -> Vec<Vertex> {
+fn sphere_vertices(rings: f32, slices: f32) -> [Vertex; SPHERE_VERTEX_COUNT] {
     // This method of sphere vert generation was yoinked from raylib <3
 
-    let mut data: Vec<Vertex> = vec![];
-    data.reserve(((rings + 2.0) * slices * 6.0) as usize);
+    let mut data = [Vertex{ position: [0.0, 0.0, 0.0] }; SPHERE_VERTEX_COUNT];
+    
+    // let mut data: Vec<Vertex> = vec![];
+    // data.reserve(((rings + 2.0) * slices * 6.0) as usize);
 
     let deg2rad = PI / 180.0;
 
@@ -194,43 +202,18 @@ fn sphere_vertices(rings: f32, slices: f32) -> Vec<Vertex> {
                 }
             };
 
-            data.push(vertex(fi, fj));
-            data.push(vertex(fi + 1.0, fj + 1.0));
-            data.push(vertex(fi + 1.0, fj));
-            data.push(vertex(fi, fj));
-            data.push(vertex(fi, fj + 1.0));
-            data.push(vertex(fi + 1.0, fj + 1.0));
+            let idx = ((slices as i32 * 6 * i) + (j * 6)) as usize;
+
+            data[idx + 0] = vertex(fi, fj);
+            data[idx + 1] = vertex(fi + 1.0, fj + 1.0);
+            data[idx + 2] = vertex(fi + 1.0, fj);
+            data[idx + 3] = vertex(fi, fj);
+            data[idx + 4] = vertex(fi, fj + 1.0);
+            data[idx + 5] = vertex(fi + 1.0, fj + 1.0);
         }
     }
 
     data
-}
-
-fn prepare_vertex_buffer(device: &DeviceRef) -> Buffer {
-    let data = sphere_vertices(SPHERE_RINGS, SPHERE_SLICES);
-
-    device.new_buffer_with_data(
-        data.as_ptr() as *const _,
-        (data.len() * size_of::<Vertex>()) as NSUInteger,
-        MTLResourceOptions::StorageModeShared,
-    )
-}
-
-fn prepare_instance_buffer(device: &DeviceRef) -> (Buffer, Pin<Box<[Instance; MAX_INSTANCE_COUNT]>>) {
-    let instance_array = Box::pin([Instance{
-        center: [0.0, 0.0, 0.0],
-        radius: 0.0,
-        normal: [0.0, 0.0, 0.0],
-    }; MAX_INSTANCE_COUNT]);
-
-    let buffer = device.new_buffer_with_bytes_no_copy(
-        instance_array.as_ptr() as *const _,
-        (size_of::<Instance>() * MAX_INSTANCE_COUNT) as u64,
-        MTLResourceOptions::StorageModeShared,
-        None
-    );
-
-    (buffer, instance_array)
 }
 
 fn prepare_depth_target(device: &DeviceRef, size: PhysicalSize<u32>) -> Texture {
@@ -270,16 +253,6 @@ fn prepare_uniforms(aspect_ratio: f32, camera_position: Vector3<f32>, camera_rot
     }
 }
 
-fn prepare_uniform_buffer(device: &DeviceRef, aspect_ratio: f32, camera_position: Vector3<f32>, camera_rotation: Vector3<f32>) -> Buffer {
-    let data = [prepare_uniforms(aspect_ratio, camera_position, camera_rotation)];
-
-    device.new_buffer_with_data(
-        data.as_ptr() as *const _,
-        size_of::<Uniforms>() as NSUInteger,
-        MTLResourceOptions::StorageModeShared,
-    )
-}
-
 pub struct FastBallRenderer {
     device: Device,
     layer: MetalLayer,
@@ -287,10 +260,10 @@ pub struct FastBallRenderer {
     pipeline: RenderPipelineState,
     depth_state: DepthStencilState,
     depth_target: Texture,
-    vertex_buffer: Buffer,
-    instance_buffer: Buffer,
-    instance_array: Pin<Box<[Instance; MAX_INSTANCE_COUNT]>>,
-    uniform_buffer: Buffer,
+
+    instances: Shared<[Instance; MAX_INSTANCE_COUNT]>,
+    vertices: Shared<[Vertex; SPHERE_VERTEX_COUNT]>,
+    uniforms: Shared<Uniforms>,
 
     camera_position: Vector3<f32>,
     camera_rotation: Vector3<f32>,
@@ -310,9 +283,15 @@ impl FastBallRenderer {
         let depth_target = prepare_depth_target(&device, size);
         let depth_state = create_depth_state(&device);
 
-        let vertex_buffer = prepare_vertex_buffer(&device);
-        let (instance_buffer, instance_array) = prepare_instance_buffer(&device);
-        let uniform_buffer = prepare_uniform_buffer(&device, size.width as f32 / size.height as f32, camera_position, camera_rotation);
+        let vertices = Shared::new(&device,  sphere_vertices(SPHERE_RINGS, SPHERE_SLICES));
+
+        let uniforms = Shared::new(&device, prepare_uniforms(size.width as f32 / size.height as f32, camera_position, camera_rotation));
+
+        let instances = Shared::new(&device, [Instance{
+            center: [0.0, 0.0, 0.0],
+            radius: 0.0,
+            normal: [0.0, 0.0, 0.0],
+        }; MAX_INSTANCE_COUNT]);
 
         FastBallRenderer {
             device,
@@ -321,10 +300,9 @@ impl FastBallRenderer {
             depth_state,
             depth_target,
             pipeline,
-            vertex_buffer,
-            instance_buffer,
-            instance_array,
-            uniform_buffer,
+            vertices,
+            instances,
+            uniforms,
             camera_position,
             camera_rotation,
         }
@@ -335,37 +313,33 @@ impl FastBallRenderer {
             .set_drawable_size(CGSize::new(new_size.width as f64, new_size.height as f64));
 
         self.depth_target = prepare_depth_target(&self.device, new_size);
-        self.uniform_buffer = prepare_uniform_buffer(&self.device, new_size.width as f32 / new_size.height as f32, self.camera_position, self.camera_rotation);
+        *self.uniforms = prepare_uniforms( new_size.width as f32 / new_size.height as f32, self.camera_position, self.camera_rotation);
     }
 
     pub fn rescaled(&self, scale_factor: f64) {
         self.layer.set_contents_scale(scale_factor);
     }
 
-    fn update_instance_buffer(&mut self, instances: impl Iterator<Item=Instance>) {
-        for (i, instance) in instances.enumerate() {
-            self.instance_array[i] = instance
-        }
-    }
-
     pub fn draw(&mut self, instances: impl Iterator<Item=Instance> + ExactSizeIterator) {
-        let instance_count = instances.len();
-        if instance_count > MAX_INSTANCE_COUNT {
-            panic!("HEY THAT:S TOO BIG!!! HEY !!")
-        }
-        self.update_instance_buffer(instances);
-
         let drawable = match self.layer.next_drawable() {
             Some(drawable) => drawable,
             None => return,
         };
 
+        let instance_count = instances.len();
+        if instance_count > MAX_INSTANCE_COUNT {
+            panic!("HEY THAT:S TOO BIG!!! HEY !!")
+        }
+        for (i, instance) in instances.enumerate() {
+            self.instances[i] = instance
+        }
+
         self.render_pass(drawable, |encoder| {
             encoder.set_render_pipeline_state(&self.pipeline);
             encoder.set_depth_stencil_state(&self.depth_state);
-            encoder.set_vertex_buffer(0, Some(&self.vertex_buffer), 0);
-            encoder.set_vertex_buffer(1, Some(&self.instance_buffer), 0);
-            encoder.set_vertex_buffer(2, Some(&self.uniform_buffer), 0);
+            encoder.set_vertex_buffer(0, Some(self.vertices.buffer()), 0);
+            encoder.set_vertex_buffer(1, Some(self.instances.buffer()), 0);
+            encoder.set_vertex_buffer(2, Some(self.uniforms.buffer()), 0);
 
             encoder.draw_primitives_instanced(
                 MTLPrimitiveType::Triangle,
