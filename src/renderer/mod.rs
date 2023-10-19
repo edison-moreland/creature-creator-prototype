@@ -11,7 +11,7 @@ use metal::{
     MTLClearColor, MTLCompareFunction, MTLLoadAction, MTLPixelFormat, MTLPrimitiveType,
     MTLResourceOptions, MTLStorageMode, MTLStoreAction, MTLTextureUsage, MTLVertexFormat,
     MTLVertexStepFunction, MetalDrawableRef, MetalLayer, NSRange, NSUInteger,
-    RenderCommandEncoderRef, RenderPassDepthAttachmentDescriptor, RenderPipelineDescriptor,
+    RenderCommandEncoderRef, RenderPipelineDescriptor,
     RenderPipelineState, Texture, TextureDescriptor, VertexAttributeDescriptor,
     VertexBufferLayoutDescriptor, VertexDescriptor,
 };
@@ -23,12 +23,29 @@ use winit::window::Window;
 const SPHERE_SLICES: f32 = 16.0 / 4.0;
 const SPHERE_RINGS: f32 = 16.0 / 4.0;
 
-const SHADER_METALLIB: &[u8] = include_bytes!("shader.metallib");
+const SHADER_LIBRARY: &[u8] = include_bytes!("shader.metallib");
+
+#[repr(C)]
+struct Vertex {
+    position: [f32; 3],
+}
+
+#[repr(C)]
+pub struct Instance {
+    pub center: [f32; 3],
+    pub radius: f32,
+    pub color: [f32; 3],
+}
+
+#[repr(C)]
+pub struct Uniforms {
+    projection: [f32; 4*4],
+    view: [f32; 4*4],
+}
 
 fn create_metal_layer(
     device: &DeviceRef,
     window: &Window,
-    // raw_window: &AppKitWindowHandle,
 ) -> MetalLayer {
     let layer = MetalLayer::new();
     layer.set_device(&device);
@@ -149,63 +166,12 @@ fn create_pipeline_descriptor(
     pipeline_descriptor
 }
 
-#[repr(C)]
-struct Vertex {
-    position: [f32; 3],
-}
 
-#[repr(C)]
-pub struct Instance {
-    pub center: [f32; 3],
-    pub radius: f32,
-    pub color: [f32; 3],
-}
-// // Draw sphere with extended parameters
-//    #define DEG2RAD (PI/180.0f)
-// void DrawSphereEx(Vector3 centerPos, float radius, int rings, int slices, Color color)
-// {
-//     rlPushMatrix();
-//         // NOTE: Transformation is applied in inverse order (scale -> translate)
-//         rlTranslatef(centerPos.x, centerPos.y, centerPos.z);
-//         rlScalef(radius, radius, radius);
-//
-//         rlBegin(RL_TRIANGLES);
-//             rlColor4ub(color.r, color.g, color.b, color.a);
-//
-//             for (int i = 0; i < (rings + 2); i++)
-//             {
-//                 for (int j = 0; j < slices; j++)
-//                 {
-//                     rlVertex3f(cosf(DEG2RAD*(270 + (180.0f/(rings + 1))*i))*sinf(DEG2RAD*(360.0f*j/slices)),
-//                                sinf(DEG2RAD*(270 + (180.0f/(rings + 1))*i)),
-//                                cosf(DEG2RAD*(270 + (180.0f/(rings + 1))*i))*cosf(DEG2RAD*(360.0f*j/slices)));
-//                     rlVertex3f(cosf(DEG2RAD*(270 + (180.0f/(rings + 1))*(i + 1)))*sinf(DEG2RAD*(360.0f*(j + 1)/slices)),
-//                                sinf(DEG2RAD*(270 + (180.0f/(rings + 1))*(i + 1))),
-//                                cosf(DEG2RAD*(270 + (180.0f/(rings + 1))*(i + 1)))*cosf(DEG2RAD*(360.0f*(j + 1)/slices)));
-//                     rlVertex3f(cosf(DEG2RAD*(270 + (180.0f/(rings + 1))*(i + 1)))*sinf(DEG2RAD*(360.0f*j/slices)),
-//                                sinf(DEG2RAD*(270 + (180.0f/(rings + 1))*(i + 1))),
-//                                cosf(DEG2RAD*(270 + (180.0f/(rings + 1))*(i + 1)))*cosf(DEG2RAD*(360.0f*j/slices)));
-//
-//                     rlVertex3f(cosf(DEG2RAD*(270 + (180.0f/(rings + 1))*i))*sinf(DEG2RAD*(360.0f*j/slices)),
-//                                sinf(DEG2RAD*(270 + (180.0f/(rings + 1))*i)),
-//                                cosf(DEG2RAD*(270 + (180.0f/(rings + 1))*i))*cosf(DEG2RAD*(360.0f*j/slices)));
-//                     rlVertex3f(cosf(DEG2RAD*(270 + (180.0f/(rings + 1))*(i)))*sinf(DEG2RAD*(360.0f*(j + 1)/slices)),
-//                                sinf(DEG2RAD*(270 + (180.0f/(rings + 1))*(i))),
-//                                cosf(DEG2RAD*(270 + (180.0f/(rings + 1))*(i)))*cosf(DEG2RAD*(360.0f*(j + 1)/slices)));
-//                     rlVertex3f(cosf(DEG2RAD*(270 + (180.0f/(rings + 1))*(i + 1)))*sinf(DEG2RAD*(360.0f*(j + 1)/slices)),
-//                                sinf(DEG2RAD*(270 + (180.0f/(rings + 1))*(i + 1))),
-//                                cosf(DEG2RAD*(270 + (180.0f/(rings + 1))*(i + 1)))*cosf(DEG2RAD*(360.0f*(j + 1)/slices)));
-//                 }
-//             }
-//         rlEnd();
-//     rlPopMatrix();
-// }
+fn sphere_vertices(rings: f32, slices: f32) -> Vec<Vertex> {
+    // This method of sphere vert generation was yoinked from raylib <3
 
-fn prepare_vertex_buffer(device: &DeviceRef) -> Buffer {
     let mut data: Vec<Vertex> = vec![];
-
-    let rings = SPHERE_RINGS;
-    let slices = SPHERE_SLICES;
+    data.reserve((rings + 2) * slices * 6);
 
     let deg2rad = PI / 180.0;
 
@@ -214,63 +180,32 @@ fn prepare_vertex_buffer(device: &DeviceRef) -> Buffer {
             let fi = i as f32;
             let fj = j as f32;
 
-            data.push(Vertex {
-                position: [
-                    (deg2rad * (270.0 + (180.0 / (rings + 1.0)) * fi)).cos()
-                        * (deg2rad * (360.0 * fj / slices)).sin(),
-                    (deg2rad * (270.0 + (180.0 / (rings + 1.0)) * fi)).sin(),
-                    (deg2rad * (270.0 + (180.0 / (rings + 1.0)) * fi)).cos()
-                        * (deg2rad * (360.0 * fj / slices)).cos(),
-                ],
-            });
-            data.push(Vertex {
-                position: [
-                    (deg2rad * (270.0 + (180.0 / (rings + 1.0)) * (fi + 1.0))).cos()
-                        * (deg2rad * (360.0 * (fj + 1.0) / slices)).sin(),
-                    (deg2rad * (270.0 + (180.0 / (rings + 1.0)) * (fi + 1.0))).sin(),
-                    (deg2rad * (270.0 + (180.0 / (rings + 1.0)) * (fi + 1.0))).cos()
-                        * (deg2rad * (360.0 * (fj + 1.0) / slices)).cos(),
-                ],
-            });
-            data.push(Vertex {
-                position: [
-                    (deg2rad * (270.0 + (180.0 / (rings + 1.0)) * (fi + 1.0))).cos()
-                        * (deg2rad * (360.0 * fj / slices)).sin(),
-                    (deg2rad * (270.0 + (180.0 / (rings + 1.0)) * (fi + 1.0))).sin(),
-                    (deg2rad * (270.0 + (180.0 / (rings + 1.0)) * (fi + 1.0))).cos()
-                        * (deg2rad * (360.0 * fj / slices)).cos(),
-                ],
-            });
+            let vertex = |i: f32, j: f32| {
+                Vertex {
+                    position: [
+                        (deg2rad * (270.0 + (180.0 / (rings + 1.0)) * i)).cos()
+                            * (deg2rad * (360.0 * j / slices)).sin(),
+                        (deg2rad * (270.0 + (180.0 / (rings + 1.0)) * i)).sin(),
+                        (deg2rad * (270.0 + (180.0 / (rings + 1.0)) * i)).cos()
+                            * (deg2rad * (360.0 * j / slices)).cos(),
+                    ],
+                }
+            };
 
-            data.push(Vertex {
-                position: [
-                    (deg2rad * (270.0 + (180.0 / (rings + 1.0)) * fi)).cos()
-                        * (deg2rad * (360.0 * fj / slices)).sin(),
-                    (deg2rad * (270.0 + (180.0 / (rings + 1.0)) * fi)).sin(),
-                    (deg2rad * (270.0 + (180.0 / (rings + 1.0)) * fi)).cos()
-                        * (deg2rad * (360.0 * fj / slices)).cos(),
-                ],
-            });
-            data.push(Vertex {
-                position: [
-                    (deg2rad * (270.0 + (180.0 / (rings + 1.0)) * fi)).cos()
-                        * (deg2rad * (360.0 * (fj + 1.0) / slices)).sin(),
-                    (deg2rad * (270.0 + (180.0 / (rings + 1.0)) * fi)).sin(),
-                    (deg2rad * (270.0 + (180.0 / (rings + 1.0)) * fi)).cos()
-                        * (deg2rad * (360.0 * (fj + 1.0) / slices)).cos(),
-                ],
-            });
-            data.push(Vertex {
-                position: [
-                    (deg2rad * (270.0 + (180.0 / (rings + 1.0)) * (fi + 1.0))).cos()
-                        * (deg2rad * (360.0 * (fj + 1.0) / slices)).sin(),
-                    (deg2rad * (270.0 + (180.0 / (rings + 1.0)) * (fi + 1.0))).sin(),
-                    (deg2rad * (270.0 + (180.0 / (rings + 1.0)) * (fi + 1.0))).cos()
-                        * (deg2rad * (360.0 * (fj + 1.0) / slices)).cos(),
-                ],
-            });
+            data.push(vertex(fi, fj));
+            data.push(vertex(fi+1.0, fj+1.0));
+            data.push(vertex(fi+1.0, fj));
+            data.push(vertex(fi, fj));
+            data.push(vertex(fi, fj+1.0));
+            data.push(vertex(fi+1.0, fj+1.0));
         }
     }
+
+    data
+}
+
+fn prepare_vertex_buffer(device: &DeviceRef) -> Buffer {
+    let data = sphere_vertices(SPHERE_RINGS, SPHERE_SLICES);
 
     device.new_buffer_with_data(
         data.as_ptr() as *const _,
@@ -286,7 +221,7 @@ fn prepare_instance_buffer(device: &DeviceRef) -> Buffer {
     )
 }
 
-fn prepare_depth_buffer(device: &DeviceRef, size: PhysicalSize<u32>) -> Texture {
+fn prepare_depth_target(device: &DeviceRef, size: PhysicalSize<u32>) -> Texture {
     let texture_descriptor = TextureDescriptor::new();
     texture_descriptor.set_width(size.width as u64);
     texture_descriptor.set_height(size.height as u64);
@@ -305,8 +240,7 @@ fn create_depth_state(device: &DeviceRef) -> DepthStencilState {
     device.new_depth_stencil_state(&depth_stencil_descriptor)
 }
 
-fn prepare_camera_matrices(aspect_ratio: f32) -> (Vec<f32>, Vec<f32>) {
-    // TODO: Something something uniforms struct, make it one buffer
+fn prepare_uniforms(aspect_ratio: f32) -> Uniforms {
     // Projection matrix
     let proj = Matrix4::new_perspective(aspect_ratio, 30.0 * (PI / 180.0), 1.0, 1000.0);
 
@@ -314,7 +248,20 @@ fn prepare_camera_matrices(aspect_ratio: f32) -> (Vec<f32>, Vec<f32>) {
     let view = Matrix4::new_translation(&vector![0.0, 0.0, -40.0])
         * Matrix4::new_rotation(vector![10.0, 0.0, 0.0]);
 
-    return (proj.as_slice().to_vec(), view.as_slice().to_vec());
+    Uniforms {
+        projection: proj.as_slice().to_vec().try_into().unwrap(),
+        view: view.as_slice().to_vec().try_into().unwrap(),
+    }
+}
+
+fn prepare_uniform_buffer(device: &DeviceRef, aspect_ratio: f32) -> Buffer {
+    let data = [prepare_uniforms(aspect_ratio)];
+
+    device.new_buffer_with_data(
+        data.as_ptr() as *const _,
+        size_of::<Uniforms>() as NSUInteger,
+        MTLResourceOptions::StorageModeShared,
+    )
 }
 
 pub struct FastBallRenderer {
@@ -323,9 +270,10 @@ pub struct FastBallRenderer {
     command_queue: CommandQueue,
     pipeline: RenderPipelineState,
     depth_state: DepthStencilState,
+    depth_target: Texture,
     vertex_buffer: Buffer,
     instance_buffer: Buffer,
-    depth_buffer: Texture,
+    uniform_buffer: Buffer,
 }
 
 impl FastBallRenderer {
@@ -335,24 +283,27 @@ impl FastBallRenderer {
 
         let layer = create_metal_layer(&device, &window);
 
-        let pipeline = create_pipeline(&device, SHADER_METALLIB, "vertex_main", "fragment_main");
+        let pipeline = create_pipeline(&device, SHADER_LIBRARY, "vertex_main", "fragment_main");
 
+        let size = window.inner_size();
+
+        let depth_target = prepare_depth_target(&device, size);
         let depth_state = create_depth_state(&device);
-        let depth_buffer = prepare_depth_buffer(&device, window.inner_size());
 
         let vertex_buffer = prepare_vertex_buffer(&device);
-
         let instance_buffer = prepare_instance_buffer(&device);
+        let uniform_buffer = prepare_uniform_buffer(&device, size.width as f32/size.height as f32);
 
         FastBallRenderer {
             device,
             layer,
             command_queue,
             depth_state,
-            depth_buffer,
+            depth_target,
             pipeline,
             vertex_buffer,
             instance_buffer,
+            uniform_buffer
         }
     }
 
@@ -360,7 +311,8 @@ impl FastBallRenderer {
         self.layer
             .set_drawable_size(CGSize::new(new_size.width as f64, new_size.height as f64));
 
-        self.depth_buffer = prepare_depth_buffer(&self.device, new_size);
+        self.depth_target = prepare_depth_target(&self.device, new_size);
+        self.uniform_buffer = prepare_uniform_buffer(&self.device, new_size.width as f32/new_size.height as f32);
     }
 
     pub fn rescaled(&self, scale_factor: f64) {
@@ -372,8 +324,6 @@ impl FastBallRenderer {
             Some(drawable) => drawable,
             None => return,
         };
-
-        let size = self.layer.drawable_size();
 
         // Update instance buffer
         if self.instance_buffer.allocated_size() < (instances.len() * size_of::<Instance>()) as u64
@@ -392,23 +342,12 @@ impl FastBallRenderer {
             (instances.len() * size_of::<Instance>()) as u64,
         ));
 
-        let (proj, view) = prepare_camera_matrices((size.width / size.height) as f32);
-
         self.render_pass(drawable, |encoder| {
             encoder.set_render_pipeline_state(&self.pipeline);
             encoder.set_depth_stencil_state(&self.depth_state);
             encoder.set_vertex_buffer(0, Some(&self.vertex_buffer), 0);
             encoder.set_vertex_buffer(1, Some(&self.instance_buffer), 0);
-            encoder.set_vertex_bytes(
-                2,
-                (proj.len() * size_of::<f32>()) as NSUInteger,
-                proj.as_ptr() as *const _,
-            );
-            encoder.set_vertex_bytes(
-                3,
-                (view.len() * size_of::<f32>()) as NSUInteger,
-                view.as_ptr() as *const _,
-            );
+            encoder.set_vertex_buffer(2, Some(&self.uniform_buffer), 0);
 
             encoder.draw_primitives_instanced(
                 MTLPrimitiveType::Triangle,
@@ -431,10 +370,10 @@ impl FastBallRenderer {
         color_attachment.set_store_action(MTLStoreAction::Store);
 
         let depth_attachment = render_pass.depth_attachment().unwrap();
-        depth_attachment.set_texture(Some(&self.depth_buffer));
+        depth_attachment.set_texture(Some(&self.depth_target));
         depth_attachment.set_clear_depth(1.0);
         depth_attachment.set_load_action(MTLLoadAction::Clear);
-        depth_attachment.set_store_action(MTLStoreAction::Store);
+        depth_attachment.set_store_action(MTLStoreAction::DontCare);
 
         let command_buffer = self.command_queue.new_command_buffer();
         let encoder = command_buffer.new_render_command_encoder(&render_pass);

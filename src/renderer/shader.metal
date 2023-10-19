@@ -13,12 +13,16 @@ struct VertexOut {
     float4 color;
 };
 
+struct Uniform {
+    float4x4 projection;
+    float4x4 view;
+};
+
 vertex VertexOut vertex_main(VertexIn in [[stage_in]],
-                             constant float4x4 &projectionMatrix [[buffer(2)]],
-                             constant float4x4 &viewMatrix [[buffer(3)]])
+                             constant Uniform &uniform [[buffer(2)]])
 {
     VertexOut out;
-    out.position = (projectionMatrix * viewMatrix ) * float4(in.center.xyz + in.radius * in.position.xyz, 1.0f);
+    out.position = (uniform.projection * uniform.view) * float4(in.center.xyz + in.radius * in.position.xyz, 1.0f);
     out.color = in.color;
     return out;
 }
