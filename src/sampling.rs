@@ -1,7 +1,9 @@
+use std::f64::consts::PI;
+
+use nalgebra::{vector, Vector2, Vector3};
+
 use crate::spatial_indexer::kd_indexer::KdContainer;
 use crate::surfaces::{gradient, on_surface};
-use nalgebra::{vector, Vector2, Vector3};
-use std::f64::consts::PI;
 
 pub struct Plane {
     o: Vector3<f32>,

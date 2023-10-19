@@ -1,9 +1,11 @@
+use std::ops::Neg;
+
+use nalgebra::{vector, Vector3};
+use rayon::prelude::*;
+
 use crate::spatial_indexer::kd_indexer::KdIndexer;
 use crate::spatial_indexer::SpatialIndexer;
 use crate::surfaces::gradient;
-use nalgebra::{vector, Vector3};
-use rayon::prelude::*;
-use std::ops::Neg;
 
 const REPULSION_AMPLITUDE: f32 = 6.0;
 const FEEDBACK: f32 = 15.0;
@@ -24,14 +26,14 @@ fn random_velocity() -> Vector3<f32> {
 fn energy_contribution(i_repulsion_radius: f32, i: Vector3<f32>, j: Vector3<f32>) -> f32 {
     REPULSION_AMPLITUDE
         * ((i - j).magnitude().powf(2.0) / (2.0 * i_repulsion_radius).powf(2.0))
-            .neg()
-            .exp()
+        .neg()
+        .exp()
 }
 
 fn repulsion_energy(
     position: Vector3<f32>,
     radius: f32,
-    neighbours: impl Iterator<Item = Vector3<f32>>,
+    neighbours: impl Iterator<Item=Vector3<f32>>,
 ) -> f32 {
     neighbours.fold(0.0, |energy, n_position| {
         energy + energy_contribution(radius, position, n_position)
@@ -41,7 +43,7 @@ fn repulsion_energy(
 fn particle_radius(
     position: Vector3<f32>,
     radius: f32,
-    neighbours: impl Iterator<Item = Vector3<f32>> + Clone,
+    neighbours: impl Iterator<Item=Vector3<f32>> + Clone,
 ) -> f32 {
     let re = repulsion_energy(position, radius, neighbours.clone());
 
@@ -49,7 +51,8 @@ fn particle_radius(
     let re_delta = -(FEEDBACK * (re - DESIRED_REPULSION_ENERGY));
 
     // change in energy with respect to change in radius
-    let di_ai = (1.0 / radius.powf(3.0)) * neighbours.fold(0.0, |sum, n_position| {
+    let di_ai = (1.0 / radius.powf(3.0))
+        * neighbours.fold(0.0, |sum, n_position| {
         let dist = (position - n_position).magnitude().powf(2.0);
 
         sum + (dist * energy_contribution(radius, position, n_position))
@@ -64,7 +67,7 @@ fn particle_radius(
 fn particle_velocity(
     position: Vector3<f32>,
     radius: f32,
-    neighbours: impl Iterator<Item = (Vector3<f32>, f32)>,
+    neighbours: impl Iterator<Item=(Vector3<f32>, f32)>,
 ) -> Vector3<f32> {
     neighbours
         .fold(vector![0.0, 0.0, 0.0], |dv, (n_position, n_radius)| {
@@ -135,7 +138,7 @@ impl RelaxationSystem {
         }
     }
 
-    pub fn positions(&self) -> impl Iterator<Item = (Vector3<f32>, f32)> + ExactSizeIterator + '_ {
+    pub fn positions(&self) -> impl Iterator<Item=(Vector3<f32>, f32)> + ExactSizeIterator + '_ {
         self.position
             .iter()
             .copied()

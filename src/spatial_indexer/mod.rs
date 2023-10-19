@@ -1,6 +1,6 @@
-pub mod kd_indexer;
-
 use nalgebra::Vector3;
+
+pub mod kd_indexer;
 
 // SpatialIndexer is used to accelerate nearest neighbour searches. It doesn't own any data, just indices
 pub trait SpatialIndexer {

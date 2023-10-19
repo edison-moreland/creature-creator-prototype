@@ -1,5 +1,6 @@
 use std::f32::consts::PI;
-use nalgebra::{matrix, vector, Matrix4, Vector3, Transform3, Rotation3};
+
+use nalgebra::{matrix, Matrix4, Rotation3, vector, Vector3};
 
 pub fn gradient(surface: impl Fn(Vector3<f32>) -> f32, p: Vector3<f32>) -> Vector3<f32> {
     let h = 0.0001;
@@ -40,11 +41,9 @@ pub fn rotate(
     rotation: Vector3<f32>,
     surface: impl Fn(Vector3<f32>) -> f32,
 ) -> impl Fn(Vector3<f32>) -> f32 {
-    let transform = Rotation3::new(rotation * (PI/ 180.0));
+    let transform = Rotation3::new(rotation * (PI / 180.0));
 
-    move |p| {
-        surface(transform.transform_vector(&p))
-    }
+    move |p| surface(transform.transform_vector(&p))
 }
 
 pub fn translate(

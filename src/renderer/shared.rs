@@ -1,14 +1,14 @@
-use std::pin::Pin;
-use std::ptr::addr_of;
-use metal::{Buffer, DeviceRef, MTLResourceOptions};
 use std::mem::size_of;
 use std::ops::{Deref, DerefMut};
+use std::pin::Pin;
+use std::ptr::addr_of;
 
+use metal::{Buffer, DeviceRef, MTLResourceOptions};
 
 // Shared allows any sized T to be shared between the cpu and gpu
 pub struct Shared<T: Sized> {
     value: Pin<Box<T>>,
-    buffer: Buffer
+    buffer: Buffer,
 }
 
 impl<T: Sized> Shared<T> {
@@ -18,7 +18,7 @@ impl<T: Sized> Shared<T> {
             addr_of!(*value.deref()) as *const _,
             size_of::<T>() as u64,
             MTLResourceOptions::StorageModeShared,
-            None
+            None,
         );
 
         Shared { value, buffer }
@@ -42,4 +42,3 @@ impl<T: Sized + Unpin> DerefMut for Shared<T> {
         self.value.deref_mut()
     }
 }
-

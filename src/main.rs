@@ -1,16 +1,19 @@
 use nalgebra::{vector, Vector3};
 use rayon::prelude::{ParallelSlice, ParallelSliceMut};
-use winit::dpi::{LogicalSize, PhysicalSize};
-use winit::event::StartCause;
-use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
-use winit::window::Window;
 use winit::{
     event::{Event, WindowEvent},
     event_loop::EventLoop,
     window::WindowBuilder,
 };
+use winit::dpi::{LogicalSize, PhysicalSize};
+use winit::event::StartCause;
+use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
+use winit::window::Window;
 
+use crate::relaxation::RelaxationSystem;
 use crate::renderer::{FastBallRenderer, Instance};
+use crate::sampling::sample;
+use crate::surfaces::{ellipsoid, gradient, rotate, smooth_union, sphere, translate, union};
 
 mod relaxation;
 mod renderer;
@@ -18,24 +21,17 @@ mod sampling;
 mod spatial_indexer;
 mod surfaces;
 
-use crate::relaxation::RelaxationSystem;
-use crate::sampling::sample;
-use crate::surfaces::{ellipsoid, gradient, rotate, smooth_union, sphere, translate, union};
-
 fn surface_at(t: f32) -> impl Fn(Vector3<f32>) -> f32 {
     smooth_union(
         sphere(10.0),
         union(
             rotate(
-                vector![0.0, (t*40.0) % 360.0, 0.0],
+                vector![0.0, (t * 40.0) % 360.0, 0.0],
                 smooth_union(
-                    translate(
-                        vector![-10.0, 0.0, 0.0],
-                        ellipsoid(10.0, 5.0, 5.0)),
-                    translate(
-                        vector![-20.0, 0.0, 0.0],
-                        sphere(10.0),
-                    ), 0.5),
+                    translate(vector![-10.0, 0.0, 0.0], ellipsoid(10.0, 5.0, 5.0)),
+                    translate(vector![-20.0, 0.0, 0.0], sphere(10.0)),
+                    0.5,
+                ),
             ),
             translate(
                 vector![0.0, (t).sin() * 10.0, 0.0],
@@ -44,7 +40,6 @@ fn surface_at(t: f32) -> impl Fn(Vector3<f32>) -> f32 {
         ),
         0.5,
     )
-
 
     // smooth_union(
     //     sphere(10.0),
@@ -80,7 +75,8 @@ impl App {
             .build(&event_loop)
             .unwrap();
 
-        let renderer = FastBallRenderer::new(&window, vector![0.0, 0.5,50.0], vector![30.0, 45.0, 0.0]);
+        let renderer =
+            FastBallRenderer::new(&window, vector![0.0, 0.5, 50.0], vector![30.0, 45.0, 0.0]);
 
         let sample_radius = 0.5;
         let points = sample(surface_at(0.0), vector![0.0, 0.0, 10.0], sample_radius);
@@ -123,10 +119,8 @@ impl App {
         //     })
         //     .collect();
 
-        self.renderer.draw(self
-            .particle_system
-            .positions()
-            .map(|(point, radius)| {
+        self.renderer
+            .draw(self.particle_system.positions().map(|(point, radius)| {
                 let normal = gradient(&surface, point).normalize();
 
                 Instance {

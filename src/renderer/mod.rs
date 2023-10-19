@@ -1,5 +1,3 @@
-mod shared;
-
 use std::f32::consts::PI;
 use std::mem;
 use std::mem::size_of;
@@ -8,22 +6,24 @@ use std::ops::{Deref, DerefMut};
 use cocoa::appkit::NSView;
 use cocoa::base::id;
 use core_graphics_types::geometry::CGSize;
-use metal::objc::runtime::YES;
 use metal::{
-    Buffer, CommandQueue, DepthStencilDescriptor, DepthStencilState, Device, DeviceRef, Function,
-    MTLClearColor, MTLCompareFunction, MTLLoadAction, MTLPixelFormat, MTLPrimitiveType,
-    MTLResourceOptions, MTLStorageMode, MTLStoreAction, MTLTextureUsage, MTLVertexFormat,
-    MTLVertexStepFunction, MetalDrawableRef, MetalLayer, NSRange, NSUInteger,
-    RenderCommandEncoderRef, RenderPipelineDescriptor,
+    CommandQueue, DepthStencilDescriptor, DepthStencilState, Device, DeviceRef, Function,
+    MetalDrawableRef, MetalLayer, MTLClearColor, MTLCompareFunction, MTLLoadAction,
+    MTLPixelFormat, MTLPrimitiveType, MTLStorageMode, MTLStoreAction, MTLTextureUsage,
+    MTLVertexFormat, MTLVertexStepFunction, NSUInteger, RenderCommandEncoderRef, RenderPipelineDescriptor,
     RenderPipelineState, Texture, TextureDescriptor, VertexAttributeDescriptor,
     VertexBufferLayoutDescriptor, VertexDescriptor,
 };
 use metal::foreign_types::ForeignType;
-use nalgebra::{vector, Matrix4, Vector3};
+use metal::objc::runtime::YES;
+use nalgebra::{Matrix4, vector, Vector3};
 use winit::dpi::PhysicalSize;
 use winit::platform::macos::WindowExtMacOS;
 use winit::window::Window;
+
 use crate::renderer::shared::Shared;
+
+mod shared;
 
 const SPHERE_SLICES: f32 = 16.0 / 2.0;
 const SPHERE_RINGS: f32 = 16.0 / 2.0;
@@ -51,10 +51,7 @@ pub struct Uniforms {
     view: [f32; 4 * 4],
 }
 
-fn create_metal_layer(
-    device: &DeviceRef,
-    window: &Window,
-) -> MetalLayer {
+fn create_metal_layer(device: &DeviceRef, window: &Window) -> MetalLayer {
     let layer = MetalLayer::new();
     layer.set_device(&device);
     layer.set_pixel_format(MTLPixelFormat::BGRA8Unorm);
@@ -174,14 +171,11 @@ fn create_pipeline_descriptor(
     pipeline_descriptor
 }
 
-
 fn sphere_vertices(rings: f32, slices: f32) -> [Vertex; SPHERE_VERTEX_COUNT] {
     // This method of sphere vert generation was yoinked from raylib <3
-
-    let mut data = [Vertex{ position: [0.0, 0.0, 0.0] }; SPHERE_VERTEX_COUNT];
-    
-    // let mut data: Vec<Vertex> = vec![];
-    // data.reserve(((rings + 2.0) * slices * 6.0) as usize);
+    let mut data = [Vertex {
+        position: [0.0, 0.0, 0.0],
+    }; SPHERE_VERTEX_COUNT];
 
     let deg2rad = PI / 180.0;
 
@@ -190,16 +184,14 @@ fn sphere_vertices(rings: f32, slices: f32) -> [Vertex; SPHERE_VERTEX_COUNT] {
             let fi = i as f32;
             let fj = j as f32;
 
-            let vertex = |i: f32, j: f32| {
-                Vertex {
-                    position: [
-                        (deg2rad * (270.0 + (180.0 / (rings + 1.0)) * i)).cos()
-                            * (deg2rad * (360.0 * j / slices)).sin(),
-                        (deg2rad * (270.0 + (180.0 / (rings + 1.0)) * i)).sin(),
-                        (deg2rad * (270.0 + (180.0 / (rings + 1.0)) * i)).cos()
-                            * (deg2rad * (360.0 * j / slices)).cos(),
-                    ],
-                }
+            let vertex = |i: f32, j: f32| Vertex {
+                position: [
+                    (deg2rad * (270.0 + (180.0 / (rings + 1.0)) * i)).cos()
+                        * (deg2rad * (360.0 * j / slices)).sin(),
+                    (deg2rad * (270.0 + (180.0 / (rings + 1.0)) * i)).sin(),
+                    (deg2rad * (270.0 + (180.0 / (rings + 1.0)) * i)).cos()
+                        * (deg2rad * (360.0 * j / slices)).cos(),
+                ],
             };
 
             let idx = ((slices as i32 * 6 * i) + (j * 6)) as usize;
@@ -235,7 +227,11 @@ fn create_depth_state(device: &DeviceRef) -> DepthStencilState {
     device.new_depth_stencil_state(&depth_stencil_descriptor)
 }
 
-fn prepare_uniforms(aspect_ratio: f32, camera_position: Vector3<f32>, camera_rotation: Vector3<f32>) -> Uniforms {
+fn prepare_uniforms(
+    aspect_ratio: f32,
+    camera_position: Vector3<f32>,
+    camera_rotation: Vector3<f32>,
+) -> Uniforms {
     // TODO: Am I doing any of this right??
 
     // Projection matrix
@@ -243,7 +239,7 @@ fn prepare_uniforms(aspect_ratio: f32, camera_position: Vector3<f32>, camera_rot
 
     // View matrix
     let view = Matrix4::new_translation(&-camera_position)
-        * Matrix4::new_rotation(vector![camera_rotation.x *(PI / 180.0), 0.0, 0.0])
+        * Matrix4::new_rotation(vector![camera_rotation.x * (PI / 180.0), 0.0, 0.0])
         * Matrix4::new_rotation(vector![0.0, camera_rotation.y * (PI / 180.0), 0.0])
         * Matrix4::new_rotation(vector![0.0, 0.0, camera_rotation.z * (PI / 180.0)]);
 
@@ -270,7 +266,11 @@ pub struct FastBallRenderer {
 }
 
 impl FastBallRenderer {
-    pub fn new(window: &Window, camera_position: Vector3<f32>, camera_rotation: Vector3<f32>) -> Self {
+    pub fn new(
+        window: &Window,
+        camera_position: Vector3<f32>,
+        camera_rotation: Vector3<f32>,
+    ) -> Self {
         let device = Device::system_default().expect("no device found");
         let command_queue = device.new_command_queue();
 
@@ -283,15 +283,25 @@ impl FastBallRenderer {
         let depth_target = prepare_depth_target(&device, size);
         let depth_state = create_depth_state(&device);
 
-        let vertices = Shared::new(&device,  sphere_vertices(SPHERE_RINGS, SPHERE_SLICES));
+        let vertices = Shared::new(&device, sphere_vertices(SPHERE_RINGS, SPHERE_SLICES));
 
-        let uniforms = Shared::new(&device, prepare_uniforms(size.width as f32 / size.height as f32, camera_position, camera_rotation));
+        let uniforms = Shared::new(
+            &device,
+            prepare_uniforms(
+                size.width as f32 / size.height as f32,
+                camera_position,
+                camera_rotation,
+            ),
+        );
 
-        let instances = Shared::new(&device, [Instance{
-            center: [0.0, 0.0, 0.0],
-            radius: 0.0,
-            normal: [0.0, 0.0, 0.0],
-        }; MAX_INSTANCE_COUNT]);
+        let instances = Shared::new(
+            &device,
+            [Instance {
+                center: [0.0, 0.0, 0.0],
+                radius: 0.0,
+                normal: [0.0, 0.0, 0.0],
+            }; MAX_INSTANCE_COUNT],
+        );
 
         FastBallRenderer {
             device,
@@ -313,7 +323,11 @@ impl FastBallRenderer {
             .set_drawable_size(CGSize::new(new_size.width as f64, new_size.height as f64));
 
         self.depth_target = prepare_depth_target(&self.device, new_size);
-        *self.uniforms = prepare_uniforms( new_size.width as f32 / new_size.height as f32, self.camera_position, self.camera_rotation);
+        *self.uniforms = prepare_uniforms(
+            new_size.width as f32 / new_size.height as f32,
+            self.camera_position,
+            self.camera_rotation,
+        );
     }
 
     pub fn rescaled(&self, scale_factor: f64) {
