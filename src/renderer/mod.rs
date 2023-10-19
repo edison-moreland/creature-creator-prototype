@@ -39,8 +39,8 @@ pub struct Instance {
 
 #[repr(C)]
 pub struct Uniforms {
-    projection: [f32; 4*4],
-    view: [f32; 4*4],
+    projection: [f32; 4 * 4],
+    view: [f32; 4 * 4],
 }
 
 fn create_metal_layer(
@@ -81,7 +81,7 @@ fn create_pipeline(
                 library.get_function(vertex_shader, None).unwrap(),
                 library.get_function(fragment_shader, None).unwrap(),
             )
-            .as_ref(),
+                .as_ref(),
         )
         .unwrap()
 }
@@ -193,11 +193,11 @@ fn sphere_vertices(rings: f32, slices: f32) -> Vec<Vertex> {
             };
 
             data.push(vertex(fi, fj));
-            data.push(vertex(fi+1.0, fj+1.0));
-            data.push(vertex(fi+1.0, fj));
+            data.push(vertex(fi + 1.0, fj + 1.0));
+            data.push(vertex(fi + 1.0, fj));
             data.push(vertex(fi, fj));
-            data.push(vertex(fi, fj+1.0));
-            data.push(vertex(fi+1.0, fj+1.0));
+            data.push(vertex(fi, fj + 1.0));
+            data.push(vertex(fi + 1.0, fj + 1.0));
         }
     }
 
@@ -244,7 +244,7 @@ fn prepare_uniforms(aspect_ratio: f32, camera_position: Vector3<f32>, camera_rot
     // TODO: Am I doing any of this right??
 
     // Projection matrix
-    let proj = Matrix4::new_perspective(aspect_ratio, 30.0 * (PI / 180.0), 1.0, 1000.0);
+    let proj = Matrix4::new_perspective(aspect_ratio, 60.0 * (PI / 180.0), 1.0, 1000.0);
 
     // View matrix
     let view = Matrix4::new_translation(&-camera_position)
@@ -299,7 +299,7 @@ impl FastBallRenderer {
 
         let vertex_buffer = prepare_vertex_buffer(&device);
         let instance_buffer = prepare_instance_buffer(&device);
-        let uniform_buffer = prepare_uniform_buffer(&device, size.width as f32/size.height as f32, camera_position, camera_rotation);
+        let uniform_buffer = prepare_uniform_buffer(&device, size.width as f32 / size.height as f32, camera_position, camera_rotation);
 
         FastBallRenderer {
             device,
@@ -321,7 +321,7 @@ impl FastBallRenderer {
             .set_drawable_size(CGSize::new(new_size.width as f64, new_size.height as f64));
 
         self.depth_target = prepare_depth_target(&self.device, new_size);
-        self.uniform_buffer = prepare_uniform_buffer(&self.device, new_size.width as f32/new_size.height as f32, self.camera_position, self.camera_rotation);
+        self.uniform_buffer = prepare_uniform_buffer(&self.device, new_size.width as f32 / new_size.height as f32, self.camera_position, self.camera_rotation);
     }
 
     pub fn rescaled(&self, scale_factor: f64) {
@@ -368,8 +368,8 @@ impl FastBallRenderer {
     }
 
     fn render_pass<F>(&self, drawable: &MetalDrawableRef, f: F)
-    where
-        F: Fn(&RenderCommandEncoderRef),
+        where
+            F: Fn(&RenderCommandEncoderRef),
     {
         let render_pass = metal::RenderPassDescriptor::new();
         let color_attachment = render_pass.color_attachments().object_at(0).unwrap();

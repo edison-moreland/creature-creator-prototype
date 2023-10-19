@@ -1,4 +1,5 @@
-use nalgebra::{matrix, vector, Matrix4, Vector3};
+use std::f32::consts::PI;
+use nalgebra::{matrix, vector, Matrix4, Vector3, Transform3, Rotation3};
 
 pub fn gradient(surface: impl Fn(Vector3<f32>) -> f32, p: Vector3<f32>) -> Vector3<f32> {
     let h = 0.0001;
@@ -33,6 +34,17 @@ pub fn ellipsoid(a: f32, b: f32, c: f32) -> impl Fn(Vector3<f32>) -> f32 {
 
 pub fn sphere(r: f32) -> impl Fn(Vector3<f32>) -> f32 {
     return ellipsoid(r, r, r);
+}
+
+pub fn rotate(
+    rotation: Vector3<f32>,
+    surface: impl Fn(Vector3<f32>) -> f32,
+) -> impl Fn(Vector3<f32>) -> f32 {
+    let transform = Rotation3::new(rotation * (PI/ 180.0));
+
+    move |p| {
+        surface(transform.transform_vector(&p))
+    }
 }
 
 pub fn translate(
