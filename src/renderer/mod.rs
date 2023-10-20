@@ -16,7 +16,7 @@ use metal::{
 };
 use metal::foreign_types::ForeignType;
 use metal::objc::runtime::YES;
-use nalgebra::{Isometry3, Matrix4, Perspective3, Point3, SVector, Transform3, vector, Vector3};
+use nalgebra::{Isometry3, Perspective3, Point3, Vector3};
 use winit::dpi::PhysicalSize;
 use winit::platform::macos::WindowExtMacOS;
 use winit::window::Window;
@@ -226,28 +226,6 @@ fn create_depth_state(device: &DeviceRef) -> DepthStencilState {
     device.new_depth_stencil_state(&depth_stencil_descriptor)
 }
 
-// fn prepare_uniforms(
-//     aspect_ratio: f32,
-//     camera_position: Vector3<f32>,
-//     camera_rotation: Vector3<f32>,
-// ) -> Uniforms {
-//     // TODO: Am I doing any of this right??
-//
-//     // Projection matrix
-//     let proj = Matrix4::new_perspective(aspect_ratio, 60.0 * (PI / 180.0), 1.0, 1000.0);
-//
-//     // View matrix
-//     let view = Matrix4::new_translation(&-camera_position)
-//         * Matrix4::new_rotation(vector![camera_rotation.x * (PI / 180.0), 0.0, 0.0])
-//         * Matrix4::new_rotation(vector![0.0, camera_rotation.y * (PI / 180.0), 0.0])
-//         * Matrix4::new_rotation(vector![0.0, 0.0, camera_rotation.z * (PI / 180.0)]);
-//
-//     Uniforms {
-//         projection: proj.as_slice().to_vec().try_into().unwrap(),
-//         view: view.as_slice().to_vec().try_into().unwrap(),
-//     }
-// }
-
 pub struct Camera {
     eye: Point3<f32>,
     target: Point3<f32>,
@@ -262,7 +240,6 @@ impl Camera {
     }
 
     fn mvp_matrix(&self, aspect_ratio: f32) -> [[f32; 4]; 4] {
-        // TODO: rh or lh?
         let view = Isometry3::look_at_rh(&self.eye, &self.target, &Vector3::y());
 
         let proj = Perspective3::new(aspect_ratio , self.fov * (180.0 / PI), 0.01, 10000.0);
