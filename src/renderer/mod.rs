@@ -6,16 +6,16 @@ use std::ops::{Deref, DerefMut};
 use cocoa::appkit::NSView;
 use cocoa::base::id;
 use core_graphics_types::geometry::CGSize;
+use metal::foreign_types::ForeignType;
+use metal::objc::runtime::YES;
 use metal::{
     CommandQueue, DepthStencilDescriptor, DepthStencilState, Device, DeviceRef, Function,
-    MetalDrawableRef, MetalLayer, MTLClearColor, MTLCompareFunction, MTLLoadAction,
-    MTLPixelFormat, MTLPrimitiveType, MTLStorageMode, MTLStoreAction, MTLTextureUsage,
-    MTLVertexFormat, MTLVertexStepFunction, NSUInteger, RenderCommandEncoderRef, RenderPipelineDescriptor,
+    MTLClearColor, MTLCompareFunction, MTLLoadAction, MTLPixelFormat, MTLPrimitiveType,
+    MTLStorageMode, MTLStoreAction, MTLTextureUsage, MTLVertexFormat, MTLVertexStepFunction,
+    MetalDrawableRef, MetalLayer, NSUInteger, RenderCommandEncoderRef, RenderPipelineDescriptor,
     RenderPipelineState, Texture, TextureDescriptor, VertexAttributeDescriptor,
     VertexBufferLayoutDescriptor, VertexDescriptor,
 };
-use metal::foreign_types::ForeignType;
-use metal::objc::runtime::YES;
 use nalgebra::{Isometry3, Perspective3, Point3, Vector3};
 use winit::dpi::PhysicalSize;
 use winit::platform::macos::WindowExtMacOS;
@@ -85,7 +85,7 @@ fn create_pipeline(
                 library.get_function(vertex_shader, None).unwrap(),
                 library.get_function(fragment_shader, None).unwrap(),
             )
-                .as_ref(),
+            .as_ref(),
         )
         .unwrap()
 }
@@ -229,20 +229,18 @@ fn create_depth_state(device: &DeviceRef) -> DepthStencilState {
 pub struct Camera {
     eye: Point3<f32>,
     target: Point3<f32>,
-    fov: f32
+    fov: f32,
 }
 
 impl Camera {
     pub fn new(eye: Point3<f32>, target: Point3<f32>, fov: f32) -> Self {
-        Camera {
-            eye, target, fov
-        }
+        Camera { eye, target, fov }
     }
 
     fn mvp_matrix(&self, aspect_ratio: f32) -> [[f32; 4]; 4] {
         let view = Isometry3::look_at_rh(&self.eye, &self.target, &Vector3::y());
 
-        let proj = Perspective3::new(aspect_ratio , self.fov * (180.0 / PI), 0.01, 10000.0);
+        let proj = Perspective3::new(aspect_ratio, self.fov * (180.0 / PI), 0.01, 10000.0);
 
         (proj.as_matrix() * view.to_homogeneous()).data.0
     }
@@ -256,18 +254,15 @@ pub struct FastBallRenderer {
     depth_state: DepthStencilState,
     depth_target: Texture,
 
+    camera: Camera,
+
     instances: Shared<[Instance; MAX_INSTANCE_COUNT]>,
     vertices: Shared<[Vertex; SPHERE_VERTEX_COUNT]>,
     uniforms: Shared<Uniforms>,
-
-    camera: Camera
 }
 
 impl FastBallRenderer {
-    pub fn new(
-        window: &Window,
-        camera: Camera,
-    ) -> Self {
+    pub fn new(window: &Window, camera: Camera) -> Self {
         let device = Device::system_default().expect("no device found");
         let command_queue = device.new_command_queue();
 
@@ -285,8 +280,8 @@ impl FastBallRenderer {
         let uniforms = Shared::new(
             &device,
             Uniforms {
-                camera: camera.mvp_matrix(size.width as  f32/ size.height as f32)
-            }
+                camera: camera.mvp_matrix(size.width as f32 / size.height as f32),
+            },
         );
 
         let instances = Shared::new(
@@ -308,7 +303,7 @@ impl FastBallRenderer {
             vertices,
             instances,
             uniforms,
-            camera
+            camera,
         }
     }
 
@@ -317,14 +312,16 @@ impl FastBallRenderer {
             .set_drawable_size(CGSize::new(new_size.width as f64, new_size.height as f64));
 
         self.depth_target = prepare_depth_target(&self.device, new_size);
-        self.uniforms.camera = self.camera.mvp_matrix(new_size.width as f32 / new_size.height as f32);
+        self.uniforms.camera = self
+            .camera
+            .mvp_matrix(new_size.width as f32 / new_size.height as f32);
     }
 
     pub fn rescaled(&self, scale_factor: f64) {
         self.layer.set_contents_scale(scale_factor);
     }
 
-    pub fn draw(&mut self, instances: impl Iterator<Item=Instance> + ExactSizeIterator) {
+    pub fn draw(&mut self, instances: impl Iterator<Item = Instance> + ExactSizeIterator) {
         let drawable = match self.layer.next_drawable() {
             Some(drawable) => drawable,
             None => return,
@@ -355,8 +352,8 @@ impl FastBallRenderer {
     }
 
     fn render_pass<F>(&self, drawable: &MetalDrawableRef, f: F)
-        where
-            F: Fn(&RenderCommandEncoderRef),
+    where
+        F: Fn(&RenderCommandEncoderRef),
     {
         let render_pass = metal::RenderPassDescriptor::new();
         let color_attachment = render_pass.color_attachments().object_at(0).unwrap();
