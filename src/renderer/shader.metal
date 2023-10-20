@@ -14,8 +14,7 @@ struct VertexOut {
 };
 
 struct Uniform {
-    float4x4 projection;
-    float4x4 view;
+    float4x4 camera;
 };
 
 vertex VertexOut vertex_main(VertexIn in [[stage_in]],
@@ -27,7 +26,7 @@ vertex VertexOut vertex_main(VertexIn in [[stage_in]],
     // TODO: better lighting
 
     VertexOut out;
-    out.position = (uniform.projection * uniform.view) * float4(origin.xyz + radius * in.position.xyz, 1.0f);
+    out.position = uniform.camera * float4(origin.xyz + radius * in.position.xyz, 1.0f);
     out.color = abs(in.normal);
     return out;
 }

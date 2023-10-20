@@ -16,7 +16,7 @@ use metal::{
 };
 use metal::foreign_types::ForeignType;
 use metal::objc::runtime::YES;
-use nalgebra::{Matrix4, vector, Vector3};
+use nalgebra::{Isometry3, Matrix4, Perspective3, Point3, SVector, Transform3, vector, Vector3};
 use winit::dpi::PhysicalSize;
 use winit::platform::macos::WindowExtMacOS;
 use winit::window::Window;
@@ -25,8 +25,8 @@ use crate::renderer::shared::Shared;
 
 mod shared;
 
-const SPHERE_SLICES: f32 = 16.0 / 2.0;
-const SPHERE_RINGS: f32 = 16.0 / 2.0;
+const SPHERE_SLICES: f32 = 16.0 / 4.0;
+const SPHERE_RINGS: f32 = 16.0 / 4.0;
 const SPHERE_VERTEX_COUNT: usize = (SPHERE_RINGS as usize + 2) * SPHERE_SLICES as usize * 6;
 const MAX_INSTANCE_COUNT: usize = 10000;
 const SHADER_LIBRARY: &[u8] = include_bytes!("shader.metallib");
@@ -47,8 +47,7 @@ pub struct Instance {
 
 #[repr(C)]
 pub struct Uniforms {
-    projection: [f32; 4 * 4],
-    view: [f32; 4 * 4],
+    camera: [[f32; 4]; 4],
 }
 
 fn create_metal_layer(device: &DeviceRef, window: &Window) -> MetalLayer {
@@ -227,25 +226,48 @@ fn create_depth_state(device: &DeviceRef) -> DepthStencilState {
     device.new_depth_stencil_state(&depth_stencil_descriptor)
 }
 
-fn prepare_uniforms(
-    aspect_ratio: f32,
-    camera_position: Vector3<f32>,
-    camera_rotation: Vector3<f32>,
-) -> Uniforms {
-    // TODO: Am I doing any of this right??
+// fn prepare_uniforms(
+//     aspect_ratio: f32,
+//     camera_position: Vector3<f32>,
+//     camera_rotation: Vector3<f32>,
+// ) -> Uniforms {
+//     // TODO: Am I doing any of this right??
+//
+//     // Projection matrix
+//     let proj = Matrix4::new_perspective(aspect_ratio, 60.0 * (PI / 180.0), 1.0, 1000.0);
+//
+//     // View matrix
+//     let view = Matrix4::new_translation(&-camera_position)
+//         * Matrix4::new_rotation(vector![camera_rotation.x * (PI / 180.0), 0.0, 0.0])
+//         * Matrix4::new_rotation(vector![0.0, camera_rotation.y * (PI / 180.0), 0.0])
+//         * Matrix4::new_rotation(vector![0.0, 0.0, camera_rotation.z * (PI / 180.0)]);
+//
+//     Uniforms {
+//         projection: proj.as_slice().to_vec().try_into().unwrap(),
+//         view: view.as_slice().to_vec().try_into().unwrap(),
+//     }
+// }
 
-    // Projection matrix
-    let proj = Matrix4::new_perspective(aspect_ratio, 60.0 * (PI / 180.0), 1.0, 1000.0);
+pub struct Camera {
+    eye: Point3<f32>,
+    target: Point3<f32>,
+    fov: f32
+}
 
-    // View matrix
-    let view = Matrix4::new_translation(&-camera_position)
-        * Matrix4::new_rotation(vector![camera_rotation.x * (PI / 180.0), 0.0, 0.0])
-        * Matrix4::new_rotation(vector![0.0, camera_rotation.y * (PI / 180.0), 0.0])
-        * Matrix4::new_rotation(vector![0.0, 0.0, camera_rotation.z * (PI / 180.0)]);
+impl Camera {
+    pub fn new(eye: Point3<f32>, target: Point3<f32>, fov: f32) -> Self {
+        Camera {
+            eye, target, fov
+        }
+    }
 
-    Uniforms {
-        projection: proj.as_slice().to_vec().try_into().unwrap(),
-        view: view.as_slice().to_vec().try_into().unwrap(),
+    fn mvp_matrix(&self, aspect_ratio: f32) -> [[f32; 4]; 4] {
+        // TODO: rh or lh?
+        let view = Isometry3::look_at_rh(&self.eye, &self.target, &Vector3::y());
+
+        let proj = Perspective3::new(aspect_ratio , self.fov * (180.0 / PI), 0.01, 10000.0);
+
+        (proj.as_matrix() * view.to_homogeneous()).data.0
     }
 }
 
@@ -261,15 +283,13 @@ pub struct FastBallRenderer {
     vertices: Shared<[Vertex; SPHERE_VERTEX_COUNT]>,
     uniforms: Shared<Uniforms>,
 
-    camera_position: Vector3<f32>,
-    camera_rotation: Vector3<f32>,
+    camera: Camera
 }
 
 impl FastBallRenderer {
     pub fn new(
         window: &Window,
-        camera_position: Vector3<f32>,
-        camera_rotation: Vector3<f32>,
+        camera: Camera,
     ) -> Self {
         let device = Device::system_default().expect("no device found");
         let command_queue = device.new_command_queue();
@@ -287,11 +307,9 @@ impl FastBallRenderer {
 
         let uniforms = Shared::new(
             &device,
-            prepare_uniforms(
-                size.width as f32 / size.height as f32,
-                camera_position,
-                camera_rotation,
-            ),
+            Uniforms {
+                camera: camera.mvp_matrix(size.width as  f32/ size.height as f32)
+            }
         );
 
         let instances = Shared::new(
@@ -313,8 +331,7 @@ impl FastBallRenderer {
             vertices,
             instances,
             uniforms,
-            camera_position,
-            camera_rotation,
+            camera
         }
     }
 
@@ -323,11 +340,7 @@ impl FastBallRenderer {
             .set_drawable_size(CGSize::new(new_size.width as f64, new_size.height as f64));
 
         self.depth_target = prepare_depth_target(&self.device, new_size);
-        *self.uniforms = prepare_uniforms(
-            new_size.width as f32 / new_size.height as f32,
-            self.camera_position,
-            self.camera_rotation,
-        );
+        self.uniforms.camera = self.camera.mvp_matrix(new_size.width as f32 / new_size.height as f32);
     }
 
     pub fn rescaled(&self, scale_factor: f64) {
@@ -358,7 +371,7 @@ impl FastBallRenderer {
             encoder.draw_primitives_instanced(
                 MTLPrimitiveType::Triangle,
                 0,
-                (SPHERE_RINGS as u64 + 2) * SPHERE_SLICES as u64 * 6,
+                SPHERE_VERTEX_COUNT as NSUInteger,
                 instance_count as NSUInteger,
             )
         })

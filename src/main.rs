@@ -1,4 +1,4 @@
-use nalgebra::{vector, Vector3};
+use nalgebra::{point, vector, Vector3};
 use rayon::prelude::{ParallelSlice, ParallelSliceMut};
 use winit::{
     event::{Event, WindowEvent},
@@ -11,7 +11,7 @@ use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
 use winit::window::Window;
 
 use crate::relaxation::RelaxationSystem;
-use crate::renderer::{FastBallRenderer, Instance};
+use crate::renderer::{Camera, FastBallRenderer, Instance};
 use crate::sampling::sample;
 use crate::surfaces::{ellipsoid, gradient, rotate, smooth_union, sphere, translate, union};
 
@@ -76,7 +76,7 @@ impl App {
             .unwrap();
 
         let renderer =
-            FastBallRenderer::new(&window, vector![0.0, 0.5, 50.0], vector![30.0, 45.0, 0.0]);
+            FastBallRenderer::new(&window, Camera::new(point![40.0, 40.0, 40.0], point![0.0, 0.0, 0.0], 60.0));
 
         let sample_radius = 0.5;
         let points = sample(surface_at(0.0), vector![0.0, 0.0, 10.0], sample_radius);
@@ -104,28 +104,13 @@ impl App {
         let surface = surface_at(self.t);
 
         self.particle_system.update(self.desired_radius, &surface);
-
-        // let instances: Vec<Instance> = self
-        //     .particle_system
-        //     .positions()
-        //     .map(|(point, radius)| {
-        //         let normal = gradient(&surface, point).normalize();
-        //
-        //         Instance {
-        //             center: [point.x, point.y, point.z],
-        //             normal: [normal.x, normal.y, normal.z],
-        //             radius,
-        //         }
-        //     })
-        //     .collect();
-
         self.renderer
             .draw(self.particle_system.positions().map(|(point, radius)| {
                 let normal = gradient(&surface, point).normalize();
 
                 Instance {
-                    center: [point.x, point.y, point.z],
-                    normal: [normal.x, normal.y, normal.z],
+                    center: point.data.0[0],
+                    normal: normal.data.0[0],
                     radius,
                 }
             }))
