@@ -12,7 +12,7 @@ const FEEDBACK: f32 = 15.0;
 const NEIGHBOUR_RADIUS: f32 = 3.0;
 const UPDATE_ITERATIONS: usize = 1;
 const ITERATION_T_STEP: f32 = 0.03;
-const EQUILIBRIUM_SPEED: f32 = 100.0;
+const EQUILIBRIUM_SPEED: f32 = 6.0;
 const FISSION_COEFFICIENT: f32 = 0.2;
 const DEATH_COEFFICIENT: f32 = 0.7;
 const MAX_RADIUS_COEFFICIENT: f32 = 1.2;
@@ -26,14 +26,14 @@ fn random_velocity() -> Vector3<f32> {
 pub fn energy_contribution(i_repulsion_radius: f32, i: Vector3<f32>, j: Vector3<f32>) -> f32 {
     REPULSION_AMPLITUDE
         * ((i - j).magnitude().powf(2.0) / (2.0 * i_repulsion_radius).powf(2.0))
-        .neg()
-        .exp()
+            .neg()
+            .exp()
 }
 
 fn repulsion_energy(
     position: Vector3<f32>,
     radius: f32,
-    neighbours: impl Iterator<Item=Vector3<f32>>,
+    neighbours: impl Iterator<Item = Vector3<f32>>,
 ) -> f32 {
     neighbours.fold(0.0, |energy, n_position| {
         energy + energy_contribution(radius, position, n_position)
@@ -43,7 +43,7 @@ fn repulsion_energy(
 fn particle_radius(
     position: Vector3<f32>,
     radius: f32,
-    neighbours: impl Iterator<Item=Vector3<f32>> + Clone,
+    neighbours: impl Iterator<Item = Vector3<f32>> + Clone,
 ) -> f32 {
     let re = repulsion_energy(position, radius, neighbours.clone());
 
@@ -53,10 +53,10 @@ fn particle_radius(
     // change in energy with respect to change in radius
     let di_ai = (1.0 / radius.powf(3.0))
         * neighbours.fold(0.0, |sum, n_position| {
-        let dist = (position - n_position).magnitude().powf(2.0);
+            let dist = (position - n_position).magnitude().powf(2.0);
 
-        sum + (dist * energy_contribution(radius, position, n_position))
-    });
+            sum + (dist * energy_contribution(radius, position, n_position))
+        });
 
     // Radius change to bring us to desired energy
     let radius_delta = re_delta / (di_ai + 10.0);
@@ -67,7 +67,7 @@ fn particle_radius(
 fn particle_velocity(
     position: Vector3<f32>,
     radius: f32,
-    neighbours: impl Iterator<Item=(Vector3<f32>, f32)>,
+    neighbours: impl Iterator<Item = (Vector3<f32>, f32)>,
 ) -> Vector3<f32> {
     neighbours
         .fold(vector![0.0, 0.0, 0.0], |dv, (n_position, n_radius)| {
@@ -99,7 +99,7 @@ pub fn constrain_to_surface(
 pub fn should_die(radius: f32, desired_radius: f32) -> bool {
     // Assuming particle is at equilibrium
     let death_radius = desired_radius * DEATH_COEFFICIENT;
-    radius < death_radius && rand::random::<f32>() > radius / death_radius
+    radius < death_radius && dbg!(rand::random::<f32>()) > radius / death_radius
 }
 
 pub fn should_fission_radius(radius: f32, desired_radius: f32) -> bool {
@@ -128,7 +128,7 @@ impl RelaxationSystem {
         radius.resize(positions.len(), sample_radius);
 
         let mut index = KdIndexer::new();
-        index.reindex(&positions);
+        index.reindex(&positions, &(0..positions.len()).collect::<Vec<usize>>());
 
         RelaxationSystem {
             position_index: index,
@@ -138,7 +138,7 @@ impl RelaxationSystem {
         }
     }
 
-    pub fn positions(&self) -> impl Iterator<Item=(Vector3<f32>, f32)> + ExactSizeIterator + '_ {
+    pub fn positions(&self) -> impl Iterator<Item = (Vector3<f32>, f32)> + ExactSizeIterator + '_ {
         self.position
             .iter()
             .copied()
@@ -193,7 +193,10 @@ impl RelaxationSystem {
             .enumerate()
             .for_each(|(i, p)| *p += self.velocity[i].scale(ITERATION_T_STEP));
 
-        self.position_index.reindex(&self.position);
+        self.position_index.reindex(
+            &self.position,
+            &(0..self.position.len()).collect::<Vec<usize>>(),
+        );
     }
 
     fn update_particle_radii(&mut self) {
@@ -286,6 +289,9 @@ impl RelaxationSystem {
             self.radius.remove(*i);
         }
 
-        self.position_index.reindex(&self.position);
+        self.position_index.reindex(
+            &self.position,
+            &(0..self.position.len()).collect::<Vec<usize>>(),
+        );
     }
 }

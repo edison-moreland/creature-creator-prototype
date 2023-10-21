@@ -1,9 +1,11 @@
+use std::cell::RefCell;
 use std::fmt::Debug;
 use std::ops::Index;
+use std::sync::RwLock;
 
 use nalgebra::Vector3;
 
-use crate::spatial_indexer::SpatialIndexer;
+use crate::spatial_indexer::{Positioned, SpatialIndexer};
 
 // KD_LEAF_SIZE controls the max size of leaf nodes. 100 was chosen after some testing
 const KD_LEAF_SIZE: usize = 100;
@@ -48,18 +50,8 @@ struct KdNode {
     left: Box<KdTree>,
 }
 
-pub trait Positioned {
-    fn position(&self) -> Vector3<f32>;
-}
-
-impl Positioned for Vector3<f32> {
-    fn position(&self) -> Vector3<f32> {
-        *self
-    }
-}
-
 fn _construct<T: Positioned + Debug + Sync>(
-    item_arena: &Vec<T>,
+    item_arena: &[T],
     items: Vec<usize>,
     axis: SplitAxis,
 ) -> KdTree {
@@ -87,7 +79,7 @@ fn _construct<T: Positioned + Debug + Sync>(
 }
 
 fn _split<T: Positioned + Debug>(
-    item_arena: &Vec<T>,
+    item_arena: &[T],
     mut items: Vec<usize>,
     axis: SplitAxis,
 ) -> (f32, Vec<usize>, Vec<usize>) {
@@ -116,7 +108,7 @@ fn _split<T: Positioned + Debug>(
 }
 
 fn _insert_item_index<T: Positioned + Debug>(
-    item_arena: &Vec<T>,
+    item_arena: &[T],
     tree: &mut KdTree,
     parent_axis: SplitAxis,
     index: usize,
@@ -152,7 +144,7 @@ fn _insert_item_index<T: Positioned + Debug>(
     }
 }
 
-fn _remove_item_index<T: Positioned + Debug>(item_arena: &Vec<T>, tree: &mut KdTree, index: usize) {
+fn _remove_item_index<T: Positioned + Debug>(item_arena: &[T], tree: &mut KdTree, index: usize) {
     match tree {
         KdTree::Leaf(l) => {
             // Find the index of the index
@@ -182,7 +174,7 @@ fn _remove_item_index<T: Positioned + Debug>(item_arena: &Vec<T>, tree: &mut KdT
 }
 
 fn _any_indices_within<T: Positioned + Debug>(
-    item_arena: &Vec<T>,
+    item_arena: &[T],
     tree: &KdTree,
     origin: Vector3<f32>,
     radius: f32,
@@ -203,13 +195,13 @@ fn _any_indices_within<T: Positioned + Debug>(
             ((component + radius >= n.midpoint)
                 && _any_indices_within(item_arena, n.left.as_ref(), origin, radius))
                 || ((component - radius < n.midpoint)
-                && _any_indices_within(item_arena, n.right.as_ref(), origin, radius))
+                    && _any_indices_within(item_arena, n.right.as_ref(), origin, radius))
         }
     }
 }
 
 fn _get_indices_within<T: Positioned + Debug>(
-    item_arena: &Vec<T>,
+    item_arena: &[T],
     tree: &KdTree,
     origin: Vector3<f32>,
     radius: f32,
@@ -248,8 +240,8 @@ pub struct KdContainer<T: Positioned + Debug> {
 }
 
 impl<T> Index<usize> for KdContainer<T>
-    where
-        T: Positioned + Debug,
+where
+    T: Positioned + Debug,
 {
     type Output = T;
 
@@ -259,8 +251,8 @@ impl<T> Index<usize> for KdContainer<T>
 }
 
 impl<T> KdContainer<T>
-    where
-        T: Positioned + Debug + Copy + Sync + Send,
+where
+    T: Positioned + Debug + Copy + Sync + Send,
 {
     pub fn new() -> Self {
         KdContainer {
@@ -290,49 +282,45 @@ impl<T> KdContainer<T>
 
 // KdIndexer uses a KdTree to provide spatial indexing
 pub struct KdIndexer {
-    root: KdTree,
+    root: RwLock<KdTree>,
 }
 
 impl KdIndexer {
     pub fn new() -> Self {
         KdIndexer {
-            root: KdTree::Leaf(vec![]),
+            root: RwLock::new(KdTree::Leaf(vec![])),
         }
     }
 }
 
-impl SpatialIndexer for KdIndexer {
-    fn reindex(&mut self, items: &Vec<Vector3<f32>>) {
-        self.root = _construct(&items, (0..items.len()).collect(), SplitAxis::X)
+impl<P: Positioned + Debug + Sync> SpatialIndexer<P> for KdIndexer {
+    fn reindex(&self, items: &[P], indices: &[usize]) {
+        *self.root.write().unwrap() = _construct(items, indices.to_vec(), SplitAxis::X);
     }
 
-    fn insert_item_index(&mut self, items: &Vec<Vector3<f32>>, index: usize) {
-        _insert_item_index(items, &mut self.root, SplitAxis::X, index)
+    fn insert_item_index(&self, items: &[P], index: usize) {
+        _insert_item_index(items, &mut self.root.write().unwrap(), SplitAxis::X, index)
     }
 
-    fn remove_item_index(&mut self, items: &Vec<Vector3<f32>>, index: usize) {
-        _remove_item_index(items, &mut self.root, index)
+    fn remove_item_index(&self, items: &[P], index: usize) {
+        _remove_item_index(items, &mut self.root.write().unwrap(), index)
     }
 
-    fn get_indices_within(
-        &self,
-        items: &Vec<Vector3<f32>>,
-        origin: Vector3<f32>,
-        radius: f32,
-    ) -> Vec<usize> {
+    fn get_indices_within(&self, items: &[P], origin: Vector3<f32>, radius: f32) -> Vec<usize> {
         let mut indicies = vec![];
 
-        _get_indices_within(items, &self.root, origin, radius, &mut indicies);
+        _get_indices_within(
+            items,
+            &self.root.write().unwrap(),
+            origin,
+            radius,
+            &mut indicies,
+        );
 
         indicies
     }
 
-    fn any_indices_within(
-        &self,
-        items: &Vec<Vector3<f32>>,
-        origin: Vector3<f32>,
-        radius: f32,
-    ) -> bool {
-        _any_indices_within(items, &self.root, origin, radius)
+    fn any_indices_within(&self, items: &[P], origin: Vector3<f32>, radius: f32) -> bool {
+        _any_indices_within(items, &self.root.write().unwrap(), origin, radius)
     }
 }

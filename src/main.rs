@@ -85,7 +85,7 @@ impl App {
         let points = sample(surface_at(0.0), vector![0.0, 0.0, 10.0], sample_radius);
 
         let mut parameters = Parameters::default();
-        parameters.desired_repulsion_radius = sample_radius;
+        parameters.desired_repulsion_radius = 0.5;
 
         let particle_system = ParticleSystem::new(parameters, points);
 
