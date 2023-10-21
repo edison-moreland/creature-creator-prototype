@@ -20,8 +20,9 @@ struct Uniform {
 vertex VertexOut vertex_main(VertexIn in [[stage_in]],
                              constant Uniform &uniform [[buffer(2)]])
 {
-    float radius = in.radius * 2;
-    float4 origin = in.center - (in.normal * radius);
+    float radius = in.radius;
+    float4 origin = in.center;
+    //float4 origin = in.center - (in.normal * radius);
 
     // TODO: better lighting
 

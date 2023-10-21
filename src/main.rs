@@ -1,20 +1,23 @@
+use crate::particle_system::{Parameters, ParticleSystem};
 use nalgebra::{point, vector, Vector3};
 use rayon::prelude::{ParallelSlice, ParallelSliceMut};
+use winit::dpi::{LogicalSize, PhysicalSize};
+use winit::event::StartCause;
+use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
+use winit::window::Window;
 use winit::{
     event::{Event, WindowEvent},
     event_loop::EventLoop,
     window::WindowBuilder,
 };
-use winit::dpi::{LogicalSize, PhysicalSize};
-use winit::event::StartCause;
-use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
-use winit::window::Window;
 
 use crate::relaxation::RelaxationSystem;
 use crate::renderer::{Camera, FastBallRenderer, Instance};
 use crate::sampling::sample;
 use crate::surfaces::{ellipsoid, gradient, rotate, smooth_union, sphere, translate, union};
 
+mod particle_system;
+mod pool;
 mod relaxation;
 mod renderer;
 mod sampling;
@@ -62,9 +65,7 @@ struct App {
 
     renderer: FastBallRenderer,
 
-    t: f32,
-    desired_radius: f32,
-    particle_system: RelaxationSystem,
+    particle_system: ParticleSystem,
 }
 
 impl App {
@@ -75,18 +76,22 @@ impl App {
             .build(&event_loop)
             .unwrap();
 
-        let renderer =
-            FastBallRenderer::new(&window, Camera::new(point![40.0, 40.0, 40.0], point![0.0, 0.0, 0.0], 60.0));
+        let renderer = FastBallRenderer::new(
+            &window,
+            Camera::new(point![40.0, 40.0, 40.0], point![0.0, 0.0, 0.0], 60.0),
+        );
 
-        let sample_radius = 0.5;
+        let sample_radius = 1.0;
         let points = sample(surface_at(0.0), vector![0.0, 0.0, 10.0], sample_radius);
-        let particle_system = RelaxationSystem::new(points, sample_radius);
+
+        let mut parameters = Parameters::default();
+        parameters.desired_repulsion_radius = sample_radius;
+
+        let particle_system = ParticleSystem::new(parameters, points);
 
         App {
             window,
             renderer,
-            t: 0.0,
-            desired_radius: 0.3,
             particle_system,
         }
     }
@@ -100,10 +105,10 @@ impl App {
     }
 
     fn draw(&mut self) {
-        self.t += 0.03;
-        let surface = surface_at(self.t);
+        // let surface = surface_at(self.particle_system.time);
+        let surface = surface_at(0.0);
 
-        self.particle_system.update(self.desired_radius, &surface);
+        self.particle_system.advance_simulation(&surface);
         self.renderer
             .draw(self.particle_system.positions().map(|(point, radius)| {
                 let normal = gradient(&surface, point).normalize();

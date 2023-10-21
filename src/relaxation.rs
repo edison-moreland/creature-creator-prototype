@@ -23,7 +23,7 @@ fn random_velocity() -> Vector3<f32> {
 }
 
 // energy_contribution returns the energy of i due to j
-fn energy_contribution(i_repulsion_radius: f32, i: Vector3<f32>, j: Vector3<f32>) -> f32 {
+pub fn energy_contribution(i_repulsion_radius: f32, i: Vector3<f32>, j: Vector3<f32>) -> f32 {
     REPULSION_AMPLITUDE
         * ((i - j).magnitude().powf(2.0) / (2.0 * i_repulsion_radius).powf(2.0))
         .neg()
@@ -86,7 +86,7 @@ fn particle_velocity(
         .scale(radius.powf(2.0))
 }
 
-fn constrain_to_surface(
+pub fn constrain_to_surface(
     surface: impl Fn(Vector3<f32>) -> f32,
     position: Vector3<f32>,
     velocity: Vector3<f32>,
@@ -96,18 +96,18 @@ fn constrain_to_surface(
         - grad.scale((grad.dot(&velocity) + (FEEDBACK * surface(position))) / (grad.dot(&grad)))
 }
 
-fn should_die(radius: f32, desired_radius: f32) -> bool {
+pub fn should_die(radius: f32, desired_radius: f32) -> bool {
     // Assuming particle is at equilibrium
     let death_radius = desired_radius * DEATH_COEFFICIENT;
     radius < death_radius && rand::random::<f32>() > radius / death_radius
 }
 
-fn should_fission_radius(radius: f32, desired_radius: f32) -> bool {
+pub fn should_fission_radius(radius: f32, desired_radius: f32) -> bool {
     let fission_radius = desired_radius * MAX_RADIUS_COEFFICIENT;
     radius > fission_radius
 }
 
-fn should_fission_energy(radius: f32, energy: f32, desired_radius: f32) -> bool {
+pub fn should_fission_energy(radius: f32, energy: f32, desired_radius: f32) -> bool {
     let fission_energy = DESIRED_REPULSION_ENERGY * FISSION_COEFFICIENT;
     energy > fission_energy && radius > desired_radius
 }
