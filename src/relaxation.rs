@@ -58,9 +58,12 @@ fn should_fission_energy(radius: f32, energy: f32, desired_radius: f32) -> bool 
 
 pub struct RelaxationSystem {
     position_index: KdIndexer,
-    position: Vec<Vector3<f32>>,
-    velocity: Vec<Vector3<f32>>,
-    radius: Vec<f32>,
+    position_a: Vec<Vector3<f32>>,
+    position_b: Vec<Vector3<f32>>,
+    velocity_a: Vec<Vector3<f32>>,
+    velocity_b: Vec<Vector3<f32>>,
+    radius_a: Vec<f32>,
+    radius_b: Vec<f32>,
 }
 
 impl RelaxationSystem {
@@ -76,17 +79,20 @@ impl RelaxationSystem {
 
         RelaxationSystem {
             position_index: index,
-            position: positions,
-            velocity,
-            radius,
+            position_a: positions.clone(),
+            position_b: positions,
+            velocity_a: velocity.clone(),
+            velocity_b: velocity,
+            radius_a: radius.clone(),
+            radius_b: radius,
         }
     }
 
     pub fn positions(&self) -> impl Iterator<Item = (Vector3<f32>, f32)> + ExactSizeIterator + '_ {
-        self.position
+        self.position_a
             .iter()
             .copied()
-            .zip(self.radius.iter().copied())
+            .zip(self.radius_a.iter().copied())
     }
 
     pub fn update(
@@ -95,33 +101,47 @@ impl RelaxationSystem {
         surface: impl Fn(Vector3<f32>) -> f32 + Send + Sync,
     ) {
         for _ in 0..UPDATE_ITERATIONS {
-            let particle_count = self.radius.len();
+            let particle_count = self.radius_a.len();
 
             for i in 0..particle_count {
                 let neighbour_indices = self.position_index.get_indices_within(
-                    &self.position,
-                    self.position[i],
-                    NEIGHBOUR_RADIUS * self.radius[i],
+                    &self.position_a,
+                    self.position_a[i],
+                    NEIGHBOUR_RADIUS * self.radius_a[i],
                 );
 
                 let neighbours = neighbour_indices.iter().filter(|j| **j != i).copied();
 
-                self.velocity[i] = constrain_to_surface(
+                let velocity = constrain_to_surface(
                     &surface,
-                    self.position[i],
-                    self.particle_velocity(self.position[i], self.radius[i], neighbours.clone()),
+                    self.position_a[i],
+                    self.particle_velocity(
+                        self.position_a[i],
+                        self.radius_a[i],
+                        neighbours.clone(),
+                    ),
                 );
-                self.position[i] += self.velocity[i].scale(ITERATION_T_STEP);
-                self.radius[i] =
-                    self.particle_radius(self.position[i], self.radius[i], neighbours.clone())
+
+                let position = self.position_a[i] + velocity.scale(ITERATION_T_STEP);
+
+                let radius = self.particle_radius(position, self.radius_a[i], neighbours.clone());
+
+                self.velocity_b[i] = velocity;
+                self.position_b[i] = position;
+                self.radius_b[i] = radius;
             }
 
-            self.position_index.reindex(&self.position);
+            self.position_a = self.position_b.clone();
+            self.velocity_a = self.velocity_b.clone();
+            self.radius_a = self.radius_b.clone();
+
+            self.position_index.reindex(&self.position_a);
+
+            self.split_kill_particles(desired_radius);
 
             // self.set_particle_velocities(&surface);
             // self.update_particle_positions();
             // self.update_particle_radii();
-            self.split_kill_particles(desired_radius);
         }
     }
 
@@ -132,7 +152,7 @@ impl RelaxationSystem {
         neighbours: impl Iterator<Item = usize>,
     ) -> f32 {
         neighbours.fold(0.0, |energy, j| {
-            energy + energy_contribution(radius, position, self.position[j])
+            energy + energy_contribution(radius, position, self.position_a[j])
         })
     }
 
@@ -150,9 +170,9 @@ impl RelaxationSystem {
         // change in energy with respect to change in radius
         let di_ai = (1.0 / radius.powf(3.0))
             * neighbours.fold(0.0, |sum, j| {
-                let dist = (position - self.position[j]).magnitude().powf(2.0);
+                let dist = (position - self.position_a[j]).magnitude().powf(2.0);
 
-                sum + (dist * energy_contribution(radius, position, self.position[j]))
+                sum + (dist * energy_contribution(radius, position, self.position_a[j]))
             });
 
         // Radius change to bring us to desired energy
@@ -169,17 +189,17 @@ impl RelaxationSystem {
     ) -> Vector3<f32> {
         neighbours
             .fold(vector![0.0, 0.0, 0.0], |dv, i| {
-                let rij = position - self.position[i];
+                let rij = position - self.position_a[i];
 
                 let rei = (rij / radius.powf(2.0)).scale(energy_contribution(
                     radius,
                     position,
-                    self.position[i],
+                    self.position_a[i],
                 ));
 
-                let rej = (rij / self.radius[i].powf(2.0)).scale(energy_contribution(
-                    self.radius[i],
-                    self.position[i],
+                let rej = (rij / self.radius_a[i].powf(2.0)).scale(energy_contribution(
+                    self.radius_a[i],
+                    self.position_a[i],
                     position,
                 ));
 
@@ -254,10 +274,10 @@ impl RelaxationSystem {
         // Apply fission/death
         let mut indices_to_die = vec![];
         let mut indices_to_fission = vec![];
-        for i in 0..self.position.len() {
-            let position = self.position[i];
-            let velocity = self.velocity[i];
-            let radius = self.radius[i];
+        for i in 0..self.position_a.len() {
+            let position = self.position_a[i];
+            let velocity = self.velocity_a[i];
+            let radius = self.radius_a[i];
 
             // Skip particles that are not at equilibrium
             if velocity.magnitude() >= (EQUILIBRIUM_SPEED * radius) {
@@ -275,9 +295,11 @@ impl RelaxationSystem {
                 continue;
             }
 
-            let neighbours =
-                self.position_index
-                    .get_indices_within(&self.position, position, NEIGHBOUR_RADIUS);
+            let neighbours = self.position_index.get_indices_within(
+                &self.position_a,
+                position,
+                NEIGHBOUR_RADIUS,
+            );
 
             let energy = self.repulsion_energy(
                 position,
@@ -293,28 +315,34 @@ impl RelaxationSystem {
 
         for i in &indices_to_fission {
             // We reuse this index for the first child. The second child gets pushed to the end
-            let position = self.position[*i];
-            let radius = self.radius[*i];
+            let position = self.position_a[*i];
+            let radius = self.radius_a[*i];
 
             let new_radius = radius / (2.0_f32).sqrt();
 
             let new_velocity = random_velocity().scale(radius);
-            self.position[*i] += new_velocity;
-            self.position.push(position - new_velocity);
+            self.position_a[*i] += new_velocity;
+            self.position_a.push(position - new_velocity);
+            self.position_b.push(position - new_velocity);
 
-            self.radius[*i] = new_radius;
-            self.radius.push(new_radius);
+            self.radius_a[*i] = new_radius;
+            self.radius_a.push(new_radius);
+            self.radius_b.push(new_radius);
 
-            self.velocity[*i] = vector![0.0, 0.0, 0.0];
-            self.velocity.push(vector![0.0, 0.0, 0.0]);
+            self.velocity_a[*i] = vector![0.0, 0.0, 0.0];
+            self.velocity_a.push(vector![0.0, 0.0, 0.0]);
+            self.velocity_b.push(vector![0.0, 0.0, 0.0]);
         }
 
         for i in indices_to_die.iter().rev() {
-            self.position.remove(*i);
-            self.velocity.remove(*i);
-            self.radius.remove(*i);
+            self.position_a.remove(*i);
+            self.velocity_a.remove(*i);
+            self.radius_a.remove(*i);
+            self.position_b.remove(*i);
+            self.velocity_b.remove(*i);
+            self.radius_b.remove(*i);
         }
 
-        self.position_index.reindex(&self.position);
+        self.position_index.reindex(&self.position_a);
     }
 }
