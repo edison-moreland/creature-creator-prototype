@@ -112,7 +112,7 @@ impl RelaxationSystem {
         surface: impl Fn(Vector3<f32>) -> f32 + Send + Sync,
     ) {
         for _ in 0..UPDATE_ITERATIONS {
-            let start = Instant::now();
+            // let start = Instant::now();
             self.particles_b
                 .write()
                 .unwrap()
@@ -161,20 +161,20 @@ impl RelaxationSystem {
                         radius,
                     }
                 });
-            let p_duration = start.elapsed();
-
-            let start = Instant::now();
+            // let p_duration = start.elapsed();
+            //
+            // let start = Instant::now();
             mem::swap(
                 &mut self.particles_a,
                 &mut self.particles_b.write().unwrap(),
             );
-            let m_duration = start.elapsed();
+            // let m_duration = start.elapsed();
 
-            let start = Instant::now();
+            // let start = Instant::now();
             self.split_kill_particles(desired_radius);
-            let s_duration = start.elapsed();
-
-            dbg!(p_duration, m_duration, s_duration);
+            // let s_duration = start.elapsed();
+            //
+            // dbg!(p_duration, m_duration, s_duration);
 
             self.position_index.reindex(&self.particles_a);
         }
@@ -238,11 +238,7 @@ impl RelaxationSystem {
 
     fn split_kill_particles(&mut self, desired_radius: f32) {
         // Apply fission/death
-        // let indices_to_die = RwLock::new(vec![]);
-        // let indices_to_fission = RwLock::new(vec![]);
-        // for (i, particle) in
-
-        let start = Instant::now();
+        // let start = Instant::now();
         let (mut indices_to_die, indices_to_fission) = self
             .particles_a
             .par_iter()
@@ -291,7 +287,6 @@ impl RelaxationSystem {
                     let energy = self.repulsion_energy(&neighbours);
 
                     if should_fission_energy(particle.radius, energy, desired_radius) {
-                        // indices_to_fission.write().unwrap().push(i);
                         fission.push(i);
                         return (kill, fission);
                     }
@@ -308,57 +303,9 @@ impl RelaxationSystem {
                     (kill_a, fission_a)
                 },
             );
-
-        // self.particles_a
-        //     .par_iter()
-        //     .enumerate()
-        //     .for_each(|(i, particle)| {
-        //         // Skip particles that are not at equilibrium
-        //         if particle.velocity.magnitude() >= (EQUILIBRIUM_SPEED * particle.radius) {
-        //             return;
-        //         }
+        // let c_duration = start.elapsed();
         //
-        //         // We check if the particle needs to die first because it's cheaper
-        //         if should_die(particle.radius, desired_radius) {
-        //             indices_to_die.write().unwrap().push(i);
-        //             return;
-        //         }
-        //
-        //         if should_fission_radius(particle.radius, desired_radius) {
-        //             indices_to_fission.write().unwrap().push(i);
-        //             return;
-        //         }
-        //
-        //         let neighbour_indices = self.position_index.get_indices_within(
-        //             &self.particles_a,
-        //             particle.position,
-        //             NEIGHBOUR_RADIUS,
-        //         );
-        //
-        //         let neighbours: Vec<(usize, f32, f32)> = neighbour_indices
-        //             .iter()
-        //             .filter(|j| **j != i)
-        //             .map(|j| {
-        //                 let pi = self.particles_a[i];
-        //                 let pj = self.particles_a[*j];
-        //
-        //                 (
-        //                     *j,
-        //                     energy_contribution(pi.radius, pi.position, pj.position),
-        //                     0.0,
-        //                 )
-        //             })
-        //             .collect();
-        //
-        //         let energy = self.repulsion_energy(&neighbours);
-        //
-        //         if should_fission_energy(particle.radius, energy, desired_radius) {
-        //             indices_to_fission.write().unwrap().push(i);
-        //         }
-        //     });
-        let c_duration = start.elapsed();
-
-        let start = Instant::now();
+        // let start = Instant::now();
         for i in indices_to_fission.iter() {
             // We reuse this index for the first child. The second child gets pushed to the end
             let position = self.particles_a[*i].position();
@@ -384,16 +331,16 @@ impl RelaxationSystem {
             self.particles_a.push(sibling_2);
             self.particles_b.write().unwrap().push(sibling_2);
         }
-        let f_duration = start.elapsed();
-
-        let start = Instant::now();
+        // let f_duration = start.elapsed();
+        //
+        // let start = Instant::now();
         indices_to_die.sort();
         for i in indices_to_die.iter().rev() {
             self.particles_a.remove(*i);
             self.particles_b.write().unwrap().remove(*i);
         }
-        let k_duration = start.elapsed();
+        // let k_duration = start.elapsed();
 
-        dbg!(c_duration, f_duration, k_duration);
+        // dbg!(c_duration, f_duration, k_duration);
     }
 }
