@@ -28,7 +28,7 @@ mod shared;
 const SPHERE_SLICES: f32 = 16.0 / 4.0;
 const SPHERE_RINGS: f32 = 16.0 / 4.0;
 const SPHERE_VERTEX_COUNT: usize = (SPHERE_RINGS as usize + 2) * SPHERE_SLICES as usize * 6;
-const MAX_INSTANCE_COUNT: usize = 10000;
+const MAX_INSTANCE_COUNT: usize = 100000;
 const SHADER_LIBRARY: &[u8] = include_bytes!("shader.metallib");
 
 #[derive(Copy, Clone)]

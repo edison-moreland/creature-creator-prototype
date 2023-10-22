@@ -1,14 +1,15 @@
 use nalgebra::{point, vector, Vector3};
 use rayon::prelude::{ParallelSlice, ParallelSliceMut};
+use std::time::Instant;
+use winit::dpi::{LogicalSize, PhysicalSize};
+use winit::event::StartCause;
+use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
+use winit::window::Window;
 use winit::{
     event::{Event, WindowEvent},
     event_loop::EventLoop,
     window::WindowBuilder,
 };
-use winit::dpi::{LogicalSize, PhysicalSize};
-use winit::event::StartCause;
-use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
-use winit::window::Window;
 
 use crate::relaxation::RelaxationSystem;
 use crate::renderer::{Camera, FastBallRenderer, Instance};
@@ -75,8 +76,10 @@ impl App {
             .build(&event_loop)
             .unwrap();
 
-        let renderer =
-            FastBallRenderer::new(&window, Camera::new(point![40.0, 40.0, 40.0], point![0.0, 0.0, 0.0], 60.0));
+        let renderer = FastBallRenderer::new(
+            &window,
+            Camera::new(point![40.0, 40.0, 40.0], point![0.0, 0.0, 0.0], 60.0),
+        );
 
         let sample_radius = 0.5;
         let points = sample(surface_at(0.0), vector![0.0, 0.0, 10.0], sample_radius);
@@ -103,7 +106,11 @@ impl App {
         self.t += 0.03;
         let surface = surface_at(self.t);
 
+        let start = Instant::now();
         self.particle_system.update(self.desired_radius, &surface);
+        let p_duration = start.elapsed();
+
+        let start = Instant::now();
         self.renderer
             .draw(self.particle_system.positions().map(|(point, radius)| {
                 let normal = gradient(&surface, point).normalize();
@@ -113,7 +120,10 @@ impl App {
                     normal: normal.data.0[0],
                     radius,
                 }
-            }))
+            }));
+        let r_duration = start.elapsed();
+
+        dbg!(p_duration, r_duration);
     }
 }
 
