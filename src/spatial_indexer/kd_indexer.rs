@@ -3,7 +3,7 @@ use std::ops::Index;
 
 use nalgebra::Vector3;
 
-use crate::spatial_indexer::SpatialIndexer;
+use crate::spatial_indexer::{Positioned, SpatialIndexer};
 
 // KD_LEAF_SIZE controls the max size of leaf nodes. 100 was chosen after some testing
 const KD_LEAF_SIZE: usize = 100;
@@ -46,16 +46,6 @@ struct KdNode {
 
     right: Box<KdTree>,
     left: Box<KdTree>,
-}
-
-pub trait Positioned {
-    fn position(&self) -> Vector3<f32>;
-}
-
-impl Positioned for Vector3<f32> {
-    fn position(&self) -> Vector3<f32> {
-        *self
-    }
 }
 
 fn _construct<T: Positioned + Debug + Sync>(
@@ -203,7 +193,7 @@ fn _any_indices_within<T: Positioned + Debug>(
             ((component + radius >= n.midpoint)
                 && _any_indices_within(item_arena, n.left.as_ref(), origin, radius))
                 || ((component - radius < n.midpoint)
-                && _any_indices_within(item_arena, n.right.as_ref(), origin, radius))
+                    && _any_indices_within(item_arena, n.right.as_ref(), origin, radius))
         }
     }
 }
@@ -248,8 +238,8 @@ pub struct KdContainer<T: Positioned + Debug> {
 }
 
 impl<T> Index<usize> for KdContainer<T>
-    where
-        T: Positioned + Debug,
+where
+    T: Positioned + Debug,
 {
     type Output = T;
 
@@ -259,8 +249,8 @@ impl<T> Index<usize> for KdContainer<T>
 }
 
 impl<T> KdContainer<T>
-    where
-        T: Positioned + Debug + Copy + Sync + Send,
+where
+    T: Positioned + Debug + Copy + Sync + Send,
 {
     pub fn new() -> Self {
         KdContainer {
@@ -301,25 +291,20 @@ impl KdIndexer {
     }
 }
 
-impl SpatialIndexer for KdIndexer {
-    fn reindex(&mut self, items: &Vec<Vector3<f32>>) {
+impl<P: Positioned + Debug + Sync> SpatialIndexer<P> for KdIndexer {
+    fn reindex(&mut self, items: &Vec<P>) {
         self.root = _construct(&items, (0..items.len()).collect(), SplitAxis::X)
     }
 
-    fn insert_item_index(&mut self, items: &Vec<Vector3<f32>>, index: usize) {
+    fn insert_item_index(&mut self, items: &Vec<P>, index: usize) {
         _insert_item_index(items, &mut self.root, SplitAxis::X, index)
     }
 
-    fn remove_item_index(&mut self, items: &Vec<Vector3<f32>>, index: usize) {
+    fn remove_item_index(&mut self, items: &Vec<P>, index: usize) {
         _remove_item_index(items, &mut self.root, index)
     }
 
-    fn get_indices_within(
-        &self,
-        items: &Vec<Vector3<f32>>,
-        origin: Vector3<f32>,
-        radius: f32,
-    ) -> Vec<usize> {
+    fn get_indices_within(&self, items: &Vec<P>, origin: Vector3<f32>, radius: f32) -> Vec<usize> {
         let mut indicies = vec![];
 
         _get_indices_within(items, &self.root, origin, radius, &mut indicies);
@@ -327,12 +312,7 @@ impl SpatialIndexer for KdIndexer {
         indicies
     }
 
-    fn any_indices_within(
-        &self,
-        items: &Vec<Vector3<f32>>,
-        origin: Vector3<f32>,
-        radius: f32,
-    ) -> bool {
+    fn any_indices_within(&self, items: &Vec<P>, origin: Vector3<f32>, radius: f32) -> bool {
         _any_indices_within(items, &self.root, origin, radius)
     }
 }
