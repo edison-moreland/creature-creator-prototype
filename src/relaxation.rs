@@ -26,64 +26,8 @@ fn random_velocity() -> Vector3<f32> {
 fn energy_contribution(i_repulsion_radius: f32, i: Vector3<f32>, j: Vector3<f32>) -> f32 {
     REPULSION_AMPLITUDE
         * ((i - j).magnitude().powf(2.0) / (2.0 * i_repulsion_radius).powf(2.0))
-        .neg()
-        .exp()
-}
-
-fn repulsion_energy(
-    position: Vector3<f32>,
-    radius: f32,
-    neighbours: impl Iterator<Item=Vector3<f32>>,
-) -> f32 {
-    neighbours.fold(0.0, |energy, n_position| {
-        energy + energy_contribution(radius, position, n_position)
-    })
-}
-
-fn particle_radius(
-    position: Vector3<f32>,
-    radius: f32,
-    neighbours: impl Iterator<Item=Vector3<f32>> + Clone,
-) -> f32 {
-    let re = repulsion_energy(position, radius, neighbours.clone());
-
-    // desired change in energy
-    let re_delta = -(FEEDBACK * (re - DESIRED_REPULSION_ENERGY));
-
-    // change in energy with respect to change in radius
-    let di_ai = (1.0 / radius.powf(3.0))
-        * neighbours.fold(0.0, |sum, n_position| {
-        let dist = (position - n_position).magnitude().powf(2.0);
-
-        sum + (dist * energy_contribution(radius, position, n_position))
-    });
-
-    // Radius change to bring us to desired energy
-    let radius_delta = re_delta / (di_ai + 10.0);
-
-    radius + (radius_delta * ITERATION_T_STEP)
-}
-
-fn particle_velocity(
-    position: Vector3<f32>,
-    radius: f32,
-    neighbours: impl Iterator<Item=(Vector3<f32>, f32)>,
-) -> Vector3<f32> {
-    neighbours
-        .fold(vector![0.0, 0.0, 0.0], |dv, (n_position, n_radius)| {
-            let rij = position - n_position;
-
-            let rei =
-                (rij / radius.powf(2.0)).scale(energy_contribution(radius, position, n_position));
-
-            let rej = (rij / n_radius.powf(2.0))
-                .scale(energy_contribution(n_radius, n_position, position));
-
-            // println!("{:?} - {:?} = {:?}", rej, rej, rei - rej);
-
-            dv + (rei + rej)
-        })
-        .scale(radius.powf(2.0))
+            .neg()
+            .exp()
 }
 
 fn constrain_to_surface(
@@ -138,7 +82,7 @@ impl RelaxationSystem {
         }
     }
 
-    pub fn positions(&self) -> impl Iterator<Item=(Vector3<f32>, f32)> + ExactSizeIterator + '_ {
+    pub fn positions(&self) -> impl Iterator<Item = (Vector3<f32>, f32)> + ExactSizeIterator + '_ {
         self.position
             .iter()
             .copied()
@@ -151,72 +95,160 @@ impl RelaxationSystem {
         surface: impl Fn(Vector3<f32>) -> f32 + Send + Sync,
     ) {
         for _ in 0..UPDATE_ITERATIONS {
-            self.set_particle_velocities(&surface);
-            self.update_particle_positions();
-            self.update_particle_radii();
+            let particle_count = self.radius.len();
+
+            for i in 0..particle_count {
+                let neighbour_indices = self.position_index.get_indices_within(
+                    &self.position,
+                    self.position[i],
+                    NEIGHBOUR_RADIUS * self.radius[i],
+                );
+
+                let neighbours = neighbour_indices.iter().filter(|j| **j != i).copied();
+
+                self.velocity[i] = constrain_to_surface(
+                    &surface,
+                    self.position[i],
+                    self.particle_velocity(self.position[i], self.radius[i], neighbours.clone()),
+                );
+                self.position[i] += self.velocity[i].scale(ITERATION_T_STEP);
+                self.radius[i] =
+                    self.particle_radius(self.position[i], self.radius[i], neighbours.clone())
+            }
+
+            self.position_index.reindex(&self.position);
+
+            // self.set_particle_velocities(&surface);
+            // self.update_particle_positions();
+            // self.update_particle_radii();
             self.split_kill_particles(desired_radius);
         }
     }
 
-    fn set_particle_velocities(&mut self, surface: impl Fn(Vector3<f32>) -> f32 + Sync) {
-        // Update velocity to push samples away from each other
+    fn repulsion_energy(
+        &self,
+        position: Vector3<f32>,
+        radius: f32,
+        neighbours: impl Iterator<Item = usize>,
+    ) -> f32 {
+        neighbours.fold(0.0, |energy, j| {
+            energy + energy_contribution(radius, position, self.position[j])
+        })
+    }
 
-        self.velocity
-            .par_iter_mut()
-            .enumerate()
-            .for_each(|(i, velocity)| {
-                let position = self.position[i];
-                let radius = self.radius[i];
+    fn particle_radius(
+        &self,
+        position: Vector3<f32>,
+        radius: f32,
+        neighbours: impl Iterator<Item = usize> + Clone,
+    ) -> f32 {
+        let re = self.repulsion_energy(position, radius, neighbours.clone());
 
-                let neighbour_indices = self.position_index.get_indices_within(
-                    &self.position,
-                    position,
-                    NEIGHBOUR_RADIUS * radius,
-                );
+        // desired change in energy
+        let re_delta = -(FEEDBACK * (re - DESIRED_REPULSION_ENERGY));
 
-                let neighbours = neighbour_indices
-                    .iter()
-                    .filter(|j| **j != i)
-                    .map(|j| (self.position[*j], self.radius[*j]));
+        // change in energy with respect to change in radius
+        let di_ai = (1.0 / radius.powf(3.0))
+            * neighbours.fold(0.0, |sum, j| {
+                let dist = (position - self.position[j]).magnitude().powf(2.0);
 
-                *velocity = constrain_to_surface(
-                    &surface,
-                    position,
-                    particle_velocity(position, radius, neighbours),
-                )
+                sum + (dist * energy_contribution(radius, position, self.position[j]))
             });
+
+        // Radius change to bring us to desired energy
+        let radius_delta = re_delta / (di_ai + 10.0);
+
+        radius + (radius_delta * ITERATION_T_STEP)
     }
 
-    fn update_particle_positions(&mut self) {
-        self.position
-            .par_iter_mut()
-            .enumerate()
-            .for_each(|(i, p)| *p += self.velocity[i].scale(ITERATION_T_STEP));
+    fn particle_velocity(
+        &self,
+        position: Vector3<f32>,
+        radius: f32,
+        neighbours: impl Iterator<Item = usize> + Clone,
+    ) -> Vector3<f32> {
+        neighbours
+            .fold(vector![0.0, 0.0, 0.0], |dv, i| {
+                let rij = position - self.position[i];
 
-        self.position_index.reindex(&self.position);
-    }
-
-    fn update_particle_radii(&mut self) {
-        self.radius
-            .par_iter_mut()
-            .enumerate()
-            .for_each(|(i, radius)| {
-                let position = self.position[i];
-
-                let neighbour_indices = self.position_index.get_indices_within(
-                    &self.position,
+                let rei = (rij / radius.powf(2.0)).scale(energy_contribution(
+                    radius,
                     position,
-                    NEIGHBOUR_RADIUS * *radius,
-                );
+                    self.position[i],
+                ));
 
-                let neighbours = neighbour_indices
-                    .iter()
-                    .filter(|j| **j != i)
-                    .map(|j| self.position[*j]);
+                let rej = (rij / self.radius[i].powf(2.0)).scale(energy_contribution(
+                    self.radius[i],
+                    self.position[i],
+                    position,
+                ));
 
-                *radius = particle_radius(position, *radius, neighbours)
-            });
+                // println!("{:?} - {:?} = {:?}", rej, rej, rei - rej);
+
+                dv + (rei + rej)
+            })
+            .scale(radius.powf(2.0))
     }
+
+    // fn set_particle_velocities(&mut self, surface: impl Fn(Vector3<f32>) -> f32 + Sync) {
+    //     // Update velocity to push samples away from each other
+    //
+    //     self.velocity
+    //         .par_iter_mut()
+    //         .enumerate()
+    //         .for_each(|(i, velocity)| {
+    //             let position = self.position[i];
+    //             let radius = self.radius[i];
+    //
+    //             let neighbour_indices = self.position_index.get_indices_within(
+    //                 &self.position,
+    //                 position,
+    //                 NEIGHBOUR_RADIUS * radius,
+    //             );
+    //
+    //             let neighbours = neighbour_indices
+    //                 .iter()
+    //                 .filter(|j| **j != i)
+    //                 .map(|j| (self.position[*j], self.radius[*j]));
+    //
+    //             *velocity = constrain_to_surface(
+    //                 &surface,
+    //                 position,
+    //                 particle_velocity(position, radius, neighbours),
+    //             )
+    //         });
+    // }
+    //
+    // fn update_particle_positions(&mut self) {
+    //     self.position
+    //         .par_iter_mut()
+    //         .enumerate()
+    //         .for_each(|(i, p)| *p += self.velocity[i].scale(ITERATION_T_STEP));
+    //
+    //     self.position_index.reindex(&self.position);
+    // }
+
+    // fn update_particle_radii(&mut self) {
+    //     self.radius
+    //         .par_iter_mut()
+    //         .enumerate()
+    //         .for_each(|(i, radius)| {
+    //             let position = self.position[i];
+    //
+    //             let neighbour_indices = self.position_index.get_indices_within(
+    //                 &self.position,
+    //                 position,
+    //                 NEIGHBOUR_RADIUS * *radius,
+    //             );
+    //
+    //             let neighbours = neighbour_indices
+    //                 .iter()
+    //                 .filter(|j| **j != i)
+    //                 .map(|j| self.position[*j]);
+    //
+    //             *radius = particle_radius(position, *radius, neighbours)
+    //         });
+    // }
 
     fn split_kill_particles(&mut self, desired_radius: f32) {
         // Apply fission/death
@@ -247,13 +279,10 @@ impl RelaxationSystem {
                 self.position_index
                     .get_indices_within(&self.position, position, NEIGHBOUR_RADIUS);
 
-            let energy = repulsion_energy(
+            let energy = self.repulsion_energy(
                 position,
                 radius,
-                neighbours
-                    .iter()
-                    .filter(|j| **j != i)
-                    .map(|j| self.position[*j]),
+                neighbours.iter().filter(|j| **j != i).copied(),
             );
 
             if should_fission_energy(radius, energy, desired_radius) {
