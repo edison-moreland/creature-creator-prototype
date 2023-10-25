@@ -20,7 +20,7 @@ const FISSION_COEFFICIENT: f32 = 0.2;
 const DEATH_COEFFICIENT: f32 = 0.7;
 const MAX_RADIUS_COEFFICIENT: f32 = 1.2;
 const DESIRED_REPULSION_ENERGY: f32 = REPULSION_AMPLITUDE * 0.8;
-const MAX_PARTICLE_COUNT: usize = 100000;
+const MAX_PARTICLE_COUNT: usize = 10000;
 
 fn random_velocity() -> Vector3<f32> {
     Vector3::new(rand::random(), rand::random(), rand::random()).normalize()
@@ -119,7 +119,11 @@ impl RelaxationSystem {
     }
 
     pub fn positions(&self) -> impl Iterator<Item = (Vector3<f32>, f32)> + ExactSizeIterator + '_ {
-        self.particles_a.iter().map(|p| (p.position, p.radius))
+        self.living_particles
+            .iter()
+            .map(|i| (self.particles_a[*i].position, self.particles_a[*i].radius))
+        //
+        // self.particles_a.iter().map(|p| (p.position, p.radius))
     }
 
     pub fn update(
@@ -239,11 +243,13 @@ impl RelaxationSystem {
 
     fn split_kill_particles(&mut self, desired_radius: f32) {
         // Apply fission/death
-        let mut indices_to_die = vec![];
+        // let mut indices_to_die = vec![];
         let mut indices_to_fission = vec![];
 
-        for (j, i) in self.living_particles.iter().enumerate() {
-            let particle = self.particles_a[*i];
+        for j in (0..self.living_particles.len()).rev() {
+            let i = self.living_particles[j];
+
+            let particle = self.particles_a[i];
 
             if particle.velocity.magnitude() >= (EQUILIBRIUM_SPEED * particle.radius) {
                 continue;
@@ -251,12 +257,14 @@ impl RelaxationSystem {
 
             // We check if the particle needs to die first because it's cheaper
             if should_die(particle.radius, desired_radius) {
-                indices_to_die.push((*i, j));
+                self.living_particles.remove(j);
+                self.index_allocator.remove(i);
+                // indices_to_die.push((i, j));
                 continue;
             }
 
             if should_fission_radius(particle.radius, desired_radius) {
-                indices_to_fission.push(*i);
+                indices_to_fission.push(i);
                 continue;
             }
 
@@ -268,9 +276,9 @@ impl RelaxationSystem {
 
             let neighbours: Vec<(usize, f32, f32)> = neighbour_indices
                 .iter()
-                .filter(|j| **j != *i)
+                .filter(|j| **j != i)
                 .map(|j| {
-                    let pi = self.particles_a[*i];
+                    let pi = self.particles_a[i];
                     let pj = self.particles_a[*j];
 
                     (
@@ -284,10 +292,13 @@ impl RelaxationSystem {
             let energy = self.repulsion_energy(&neighbours);
 
             if should_fission_energy(particle.radius, energy, desired_radius) {
-                indices_to_fission.push(*i);
+                indices_to_fission.push(i);
                 continue;
             }
         }
+
+        // for (j, i) in self.living_particles.iter().enumerate() {
+        // }
 
         for i in indices_to_fission.iter() {
             // We reuse this index for the first child. The second child gets pushed to the end
@@ -318,9 +329,9 @@ impl RelaxationSystem {
         }
 
         // indices_to_die.par_sort_unstable();
-        for (i, j) in indices_to_die.iter().rev() {
-            self.living_particles.remove(*j);
-            self.index_allocator.remove(*i);
-        }
+        // for (i, j) in indices_to_die.iter().rev() {
+        //     self.living_particles.remove(*j);
+        //     self.index_allocator.remove(*i);
+        // }
     }
 }
