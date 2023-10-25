@@ -1,15 +1,15 @@
 use std::time::Instant;
 
 use nalgebra::{point, vector, Vector3};
+use winit::dpi::{LogicalSize, PhysicalSize};
+use winit::event::StartCause;
+use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
+use winit::window::Window;
 use winit::{
     event::{Event, WindowEvent},
     event_loop::EventLoop,
     window::WindowBuilder,
 };
-use winit::dpi::{LogicalSize, PhysicalSize};
-use winit::event::StartCause;
-use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
-use winit::window::Window;
 
 use crate::relaxation::RelaxationSystem;
 use crate::renderer::{Camera, FastBallRenderer, Instance};
@@ -135,7 +135,7 @@ fn main() {
     event_loop
         .run(move |event, event_loop| match event {
             Event::NewEvents(StartCause::Init) => {
-                app = Some(App::init(&event_loop));
+                app.replace(App::init(&event_loop));
 
                 event_loop.set_control_flow(ControlFlow::Poll)
             }

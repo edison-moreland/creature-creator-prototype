@@ -5,15 +5,15 @@ use std::mem::size_of;
 use cocoa::appkit::NSView;
 use cocoa::base::id;
 use core_graphics_types::geometry::CGSize;
+use metal::objc::runtime::YES;
 use metal::{
     CommandQueue, DepthStencilDescriptor, DepthStencilState, Device, DeviceRef, Function,
-    MetalDrawableRef, MetalLayer, MTLClearColor, MTLCompareFunction, MTLLoadAction,
-    MTLPixelFormat, MTLPrimitiveType, MTLStorageMode, MTLStoreAction, MTLTextureUsage,
-    MTLVertexFormat, MTLVertexStepFunction, NSUInteger, RenderCommandEncoderRef, RenderPipelineDescriptor,
+    MTLClearColor, MTLCompareFunction, MTLLoadAction, MTLPixelFormat, MTLPrimitiveType,
+    MTLStorageMode, MTLStoreAction, MTLTextureUsage, MTLVertexFormat, MTLVertexStepFunction,
+    MetalDrawableRef, MetalLayer, NSUInteger, RenderCommandEncoderRef, RenderPipelineDescriptor,
     RenderPipelineState, Texture, TextureDescriptor, VertexAttributeDescriptor,
     VertexBufferLayoutDescriptor, VertexDescriptor,
 };
-use metal::objc::runtime::YES;
 use nalgebra::{Isometry3, Perspective3, Point3, Vector3};
 use winit::dpi::PhysicalSize;
 use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
@@ -23,8 +23,8 @@ use crate::renderer::shared::Shared;
 
 mod shared;
 
-const SPHERE_SLICES: f32 = 16.0 / 4.0;
-const SPHERE_RINGS: f32 = 16.0 / 4.0;
+const SPHERE_SLICES: f32 = 16.0 / 2.0;
+const SPHERE_RINGS: f32 = 16.0 / 2.0;
 const SPHERE_VERTEX_COUNT: usize = (SPHERE_RINGS as usize + 2) * SPHERE_SLICES as usize * 6;
 const MAX_INSTANCE_COUNT: usize = 20000;
 const SHADER_LIBRARY: &[u8] = include_bytes!("shader.metallib");
