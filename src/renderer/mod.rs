@@ -1,12 +1,10 @@
 use std::f32::consts::PI;
 use std::mem;
 use std::mem::size_of;
-use std::ops::{Deref, DerefMut};
 
 use cocoa::appkit::NSView;
 use cocoa::base::id;
 use core_graphics_types::geometry::CGSize;
-use metal::foreign_types::ForeignType;
 use metal::objc::runtime::YES;
 use metal::{
     CommandQueue, DepthStencilDescriptor, DepthStencilState, Device, DeviceRef, Function,
@@ -18,8 +16,7 @@ use metal::{
 };
 use nalgebra::{Isometry3, Perspective3, Point3, Vector3};
 use winit::dpi::PhysicalSize;
-use winit::platform::macos::WindowExtMacOS;
-use winit::raw_window_handle::{HasRawWindowHandle, HasWindowHandle, RawWindowHandle};
+use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
 use winit::window::Window;
 
 use crate::renderer::shared::Shared;
@@ -29,7 +26,7 @@ mod shared;
 const SPHERE_SLICES: f32 = 16.0 / 4.0;
 const SPHERE_RINGS: f32 = 16.0 / 4.0;
 const SPHERE_VERTEX_COUNT: usize = (SPHERE_RINGS as usize + 2) * SPHERE_SLICES as usize * 6;
-const MAX_INSTANCE_COUNT: usize = 10000;
+const MAX_INSTANCE_COUNT: usize = 20000;
 const SHADER_LIBRARY: &[u8] = include_bytes!("shader.metallib");
 
 #[derive(Copy, Clone)]

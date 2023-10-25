@@ -90,7 +90,7 @@ impl App {
             window,
             renderer,
             t: 0.0,
-            desired_radius: 0.5,
+            desired_radius: 0.4,
             particle_system,
         }
     }
