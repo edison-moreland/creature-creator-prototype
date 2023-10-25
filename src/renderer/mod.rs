@@ -5,15 +5,15 @@ use std::mem::size_of;
 use cocoa::appkit::NSView;
 use cocoa::base::id;
 use core_graphics_types::geometry::CGSize;
-use metal::objc::runtime::YES;
 use metal::{
     CommandQueue, DepthStencilDescriptor, DepthStencilState, Device, DeviceRef, Function,
-    MTLClearColor, MTLCompareFunction, MTLLoadAction, MTLPixelFormat, MTLPrimitiveType,
-    MTLStorageMode, MTLStoreAction, MTLTextureUsage, MTLVertexFormat, MTLVertexStepFunction,
-    MetalDrawableRef, MetalLayer, NSUInteger, RenderCommandEncoderRef, RenderPipelineDescriptor,
+    MetalDrawableRef, MetalLayer, MTLClearColor, MTLCompareFunction, MTLLoadAction,
+    MTLPixelFormat, MTLPrimitiveType, MTLStorageMode, MTLStoreAction, MTLTextureUsage,
+    MTLVertexFormat, MTLVertexStepFunction, NSUInteger, RenderCommandEncoderRef, RenderPipelineDescriptor,
     RenderPipelineState, Texture, TextureDescriptor, VertexAttributeDescriptor,
     VertexBufferLayoutDescriptor, VertexDescriptor,
 };
+use metal::objc::runtime::YES;
 use nalgebra::{Isometry3, Perspective3, Point3, Vector3};
 use winit::dpi::PhysicalSize;
 use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};

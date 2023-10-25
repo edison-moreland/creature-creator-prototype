@@ -1,6 +1,6 @@
 use std::f32::consts::PI;
 
-use nalgebra::{matrix, Matrix4, Rotation3, vector, Vector3};
+use nalgebra::{matrix, vector, Matrix4, Rotation3, Vector3};
 
 pub fn gradient(surface: impl Fn(Vector3<f32>) -> f32, p: Vector3<f32>) -> Vector3<f32> {
     let h = 0.0001;

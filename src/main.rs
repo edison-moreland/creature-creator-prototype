@@ -1,15 +1,15 @@
-use nalgebra::{point, vector, Vector3};
-use rayon::prelude::{ParallelSlice, ParallelSliceMut};
 use std::time::Instant;
-use winit::dpi::{LogicalSize, PhysicalSize};
-use winit::event::StartCause;
-use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
-use winit::window::Window;
+
+use nalgebra::{point, vector, Vector3};
 use winit::{
     event::{Event, WindowEvent},
     event_loop::EventLoop,
     window::WindowBuilder,
 };
+use winit::dpi::{LogicalSize, PhysicalSize};
+use winit::event::StartCause;
+use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
+use winit::window::Window;
 
 use crate::relaxation::RelaxationSystem;
 use crate::renderer::{Camera, FastBallRenderer, Instance};

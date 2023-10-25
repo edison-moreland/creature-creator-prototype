@@ -1,14 +1,12 @@
 use std::mem;
 use std::ops::Neg;
-use std::sync::RwLock;
+
+use nalgebra::{vector, Vector3};
 
 use crate::buffer_allocator::{BufferAllocator, StackBufferAllocator};
-use nalgebra::{vector, Vector3};
-use rayon::prelude::*;
-
-use crate::spatial_indexer::kd_indexer::KdIndexer;
 use crate::spatial_indexer::{Positioned, SpatialIndexer};
-use crate::surfaces::{gradient, union};
+use crate::spatial_indexer::kd_indexer::KdIndexer;
+use crate::surfaces::gradient;
 
 const REPULSION_AMPLITUDE: f32 = 6.0;
 const FEEDBACK: f32 = 15.0;

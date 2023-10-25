@@ -59,10 +59,6 @@ fn _construct<T: Positioned + Debug + Sync>(
 
     let (midpoint, left, right) = _split(item_arena, items, axis);
 
-    // let (left_node, right_node) = rayon::join(
-    //     || _construct(item_arena, left, axis.next()),
-    //     || _construct(item_arena, right, axis.next()),
-    // );
     let (left_node, right_node) = (
         _construct(item_arena, left, axis.next()),
         _construct(item_arena, right, axis.next()),
