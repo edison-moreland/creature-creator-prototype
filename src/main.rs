@@ -16,6 +16,7 @@ use crate::renderer::{Camera, FastBallRenderer, Instance};
 use crate::sampling::sample;
 use crate::surfaces::{ellipsoid, gradient, rotate, smooth_union, sphere, translate, union};
 
+mod buffer_allocator;
 mod relaxation;
 mod renderer;
 mod sampling;
@@ -128,24 +129,26 @@ impl App {
 }
 
 fn main() {
-    let event_loop = EventLoop::new();
+    let event_loop = EventLoop::new().unwrap();
     let mut app = None;
 
-    event_loop.run(move |event, event_loop, cf| match event {
-        Event::NewEvents(StartCause::Init) => {
-            app = Some(App::init(&event_loop));
+    event_loop
+        .run(move |event, event_loop| match event {
+            Event::NewEvents(StartCause::Init) => {
+                app = Some(App::init(&event_loop));
 
-            *cf = ControlFlow::Poll;
-        }
-        Event::WindowEvent { event, .. } => match event {
-            WindowEvent::CloseRequested => *cf = ControlFlow::Exit,
-            WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
-                app.as_ref().unwrap().scale_factor_changed(scale_factor);
+                event_loop.set_control_flow(ControlFlow::Poll)
             }
-            WindowEvent::Resized(size) => app.as_mut().unwrap().resized(size),
+            Event::WindowEvent { event, .. } => match event {
+                WindowEvent::CloseRequested => event_loop.exit(),
+                WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
+                    app.as_ref().unwrap().scale_factor_changed(scale_factor);
+                }
+                WindowEvent::Resized(size) => app.as_mut().unwrap().resized(size),
+                _ => (),
+            },
+            Event::AboutToWait => app.as_mut().unwrap().draw(),
             _ => (),
-        },
-        Event::MainEventsCleared => app.as_mut().unwrap().draw(),
-        _ => (),
-    })
+        })
+        .unwrap()
 }

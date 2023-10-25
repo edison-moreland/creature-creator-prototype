@@ -19,6 +19,7 @@ use metal::{
 use nalgebra::{Isometry3, Perspective3, Point3, Vector3};
 use winit::dpi::PhysicalSize;
 use winit::platform::macos::WindowExtMacOS;
+use winit::raw_window_handle::{HasRawWindowHandle, HasWindowHandle, RawWindowHandle};
 use winit::window::Window;
 
 use crate::renderer::shared::Shared;
@@ -56,10 +57,13 @@ fn create_metal_layer(device: &DeviceRef, window: &Window) -> MetalLayer {
     layer.set_pixel_format(MTLPixelFormat::BGRA8Unorm);
     layer.set_presents_with_transaction(false);
 
-    unsafe {
-        let view = window.ns_view() as id;
-        view.setWantsLayer(YES);
-        view.setLayer(mem::transmute(layer.as_ref()));
+    let handle = window.window_handle().unwrap();
+    if let RawWindowHandle::AppKit(handle) = handle.as_raw() {
+        unsafe {
+            let view = handle.ns_view.as_ptr() as id;
+            view.setWantsLayer(YES);
+            view.setLayer(mem::transmute(layer.as_ref()));
+        }
     }
 
     let draw_size = window.inner_size();
