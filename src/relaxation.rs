@@ -132,12 +132,12 @@ impl RelaxationSystem {
         for _ in 0..UPDATE_ITERATIONS {
             for j in (0..self.living_particles.len()).rev() {
                 let i = self.living_particles[j];
-                assert!(i < MAX_PARTICLE_COUNT);
+                let particle = self.particles_a[i];
 
                 let neighbour_indices = self.position_index.get_indices_within(
                     &self.particles_a,
-                    self.particles_a[i].position,
-                    NEIGHBOUR_RADIUS * self.particles_a[i].radius,
+                    particle.position,
+                    NEIGHBOUR_RADIUS * particle.radius,
                 );
 
                 let neighbours: Vec<(usize, f32, f32)> = neighbour_indices
@@ -146,38 +146,35 @@ impl RelaxationSystem {
                     .map(|j| {
                         assert!(*j < MAX_PARTICLE_COUNT);
 
-                        let pi = self.particles_a[i];
+                        // let pi = self.particles_a[i];
                         let pj = self.particles_a[*j];
 
                         (
                             *j,
-                            energy_contribution(pi.radius, pi.position, pj.position),
-                            energy_contribution(pj.radius, pj.position, pi.position),
+                            energy_contribution(particle.radius, particle.position, pj.position),
+                            energy_contribution(pj.radius, pj.position, particle.position),
                         )
                     })
                     .collect();
                 let energy = self.repulsion_energy(&neighbours);
 
-                if self.particles_a[i].velocity.magnitude()
-                    < (EQUILIBRIUM_SPEED * self.particles_a[i].radius)
-                {
-                    let radius = self.particles_a[i].radius;
-                    if should_die(radius, desired_radius) {
+                if particle.velocity.magnitude() < (EQUILIBRIUM_SPEED * particle.radius) {
+                    if should_die(particle.radius, desired_radius) {
                         self.living_particles.remove(j);
                         self.index_allocator.remove(i);
                         continue;
                     }
 
-                    if should_fission_energy(radius, energy, desired_radius)
-                        || should_fission_radius(radius, desired_radius)
+                    if should_fission_energy(particle.radius, energy, desired_radius)
+                        || should_fission_radius(particle.radius, desired_radius)
                     {
-                        let position = self.particles_a[i].position();
-                        let radius = self.particles_a[i].radius;
+                        let position = particle.position();
+                        let radius = particle.radius;
 
                         let new_radius = radius / (2.0_f32).sqrt();
                         let new_velocity = random_velocity().scale(radius);
 
-                        self.particles_a[i] = Particle {
+                        self.particles_b[i] = Particle {
                             position: position + new_velocity,
                             velocity: vector![0.0, 0.0, 0.0],
                             radius: new_radius,
@@ -189,7 +186,6 @@ impl RelaxationSystem {
                             radius: new_radius,
                         };
                         let sibling_i = self.index_allocator.insert();
-                        self.particles_a[sibling_i] = sibling;
                         self.particles_b[sibling_i] = sibling;
                         self.living_particles.push(sibling_i);
                         continue;
@@ -198,18 +194,13 @@ impl RelaxationSystem {
 
                 let velocity = constrain_to_surface(
                     &surface,
-                    self.particles_a[i].position,
-                    self.particle_velocity(
-                        self.particles_a[i].position,
-                        self.particles_a[i].radius,
-                        &neighbours,
-                    ),
+                    particle.position,
+                    self.particle_velocity(particle.position, particle.radius, &neighbours),
                 );
 
-                let position = self.particles_a[i].position + velocity.scale(ITERATION_T_STEP);
+                let position = particle.position + velocity.scale(ITERATION_T_STEP);
 
-                let radius =
-                    self.particle_radius(position, self.particles_a[i].radius, energy, &neighbours);
+                let radius = self.particle_radius(position, particle.radius, energy, &neighbours);
 
                 self.particles_b[i] = Particle {
                     position,
@@ -226,9 +217,10 @@ impl RelaxationSystem {
     }
 
     fn repulsion_energy(&self, neighbours: &[(usize, f32, f32)]) -> f32 {
-        neighbours
-            .iter()
-            .fold(0.0, |energy, (_, energy_cont, _)| energy + energy_cont)
+        neighbours.iter().map(|(_, energy, _)| energy).sum()
+        // neighbours
+        //     .iter()
+        //     .fold(0.0, |energy, (_, energy_cont, _)| energy + energy_cont)
     }
 
     fn particle_radius(
@@ -243,13 +235,16 @@ impl RelaxationSystem {
 
         // change in energy with respect to change in radius
         let di_ai = (1.0 / radius.powf(3.0))
-            * neighbours.iter().fold(0.0, |sum, (j, energy_cont, _)| {
-                let dist = (position - self.particles_a[*j].position())
-                    .magnitude()
-                    .powf(2.0);
+            * neighbours
+                .iter()
+                .map(|(j, energy_cont, _)| {
+                    let dist = (position - self.particles_a[*j].position())
+                        .magnitude()
+                        .powf(2.0);
 
-                sum + (dist * energy_cont)
-            });
+                    dist * energy_cont
+                })
+                .sum::<f32>();
 
         // Radius change to bring us to desired energy
         let radius_delta = re_delta / (di_ai + 10.0);
