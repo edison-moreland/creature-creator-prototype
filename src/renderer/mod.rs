@@ -1,5 +1,5 @@
 use std::f32::consts::PI;
-use std::mem;
+
 use std::mem::size_of;
 
 use cocoa::appkit::NSView;
