@@ -152,7 +152,7 @@ fn _remove_item_index<T: Positioned + Debug>(item_arena: &[T], tree: &mut KdTree
 
             l.remove(index_index as usize);
 
-            if l.len() == 0 {
+            if l.is_empty() {
                 panic!("handle empty leaf!")
             }
         }
@@ -260,7 +260,7 @@ where
 
         let index = self.items.len() - 1;
 
-        _insert_item_index(&mut self.items, &mut self.tree, SplitAxis::X, index)
+        _insert_item_index(&self.items, &mut self.tree, SplitAxis::X, index)
     }
 
     pub fn append(&mut self, points: Vec<T>) {
@@ -290,7 +290,7 @@ impl KdIndexer {
 impl<P: Positioned + Debug + Sync> SpatialIndexer<P> for KdIndexer {
     fn reindex(&mut self, items: &[P], indices: Vec<usize>) {
         // (0..items.len()).collect()
-        self.root = _construct(&items, indices, SplitAxis::X)
+        self.root = _construct(items, indices, SplitAxis::X)
     }
 
     fn insert_item_index(&mut self, items: &[P], index: usize) {

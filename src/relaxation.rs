@@ -111,7 +111,7 @@ impl RelaxationSystem {
             position_index,
             index_allocator,
 
-            particles_a: particles.clone(),
+            particles_a: particles,
             particles_b: particles,
         }
     }
@@ -225,7 +225,7 @@ impl RelaxationSystem {
         }
     }
 
-    fn repulsion_energy(&self, neighbours: &Vec<(usize, f32, f32)>) -> f32 {
+    fn repulsion_energy(&self, neighbours: &[(usize, f32, f32)]) -> f32 {
         neighbours
             .iter()
             .fold(0.0, |energy, (_, energy_cont, _)| energy + energy_cont)
@@ -236,7 +236,7 @@ impl RelaxationSystem {
         position: Vector3<f32>,
         radius: f32,
         repulsion_energy: f32,
-        neighbours: &Vec<(usize, f32, f32)>,
+        neighbours: &[(usize, f32, f32)],
     ) -> f32 {
         // desired change in energy
         let re_delta = -(FEEDBACK * (repulsion_energy - DESIRED_REPULSION_ENERGY));
@@ -261,7 +261,7 @@ impl RelaxationSystem {
         &self,
         position: Vector3<f32>,
         radius: f32,
-        neighbours: &Vec<(usize, f32, f32)>,
+        neighbours: &[(usize, f32, f32)],
     ) -> Vector3<f32> {
         neighbours
             .iter()

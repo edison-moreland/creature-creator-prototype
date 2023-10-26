@@ -74,7 +74,7 @@ impl App {
         let window = WindowBuilder::new()
             .with_title("Creature Creator")
             .with_inner_size(LogicalSize::new(600, 300))
-            .build(&event_loop)
+            .build(event_loop)
             .unwrap();
 
         let renderer = FastBallRenderer::new(
@@ -135,7 +135,7 @@ fn main() {
     event_loop
         .run(move |event, event_loop| match event {
             Event::NewEvents(StartCause::Init) => {
-                app.replace(App::init(&event_loop));
+                app.replace(App::init(event_loop));
 
                 event_loop.set_control_flow(ControlFlow::Poll)
             }

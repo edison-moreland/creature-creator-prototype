@@ -103,9 +103,7 @@ pub fn sample(
 
     let mut untreated = initial_siblings;
 
-    while !untreated.is_empty() {
-        let next_seed = untreated.pop().unwrap();
-
+    while let Some(next_seed) = untreated.pop() {
         for point in sibling_points(&surface, next_seed, repulsion_radius) {
             if samples.any_items_in_radius(point, repulsion_radius * 1.9) {
                 continue;

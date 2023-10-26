@@ -50,7 +50,7 @@ pub struct Uniforms {
 
 fn create_metal_layer(device: &DeviceRef, window: &Window) -> MetalLayer {
     let layer = MetalLayer::new();
-    layer.set_device(&device);
+    layer.set_device(device);
     layer.set_pixel_format(MTLPixelFormat::BGRA8Unorm);
     layer.set_presents_with_transaction(false);
 
@@ -59,7 +59,9 @@ fn create_metal_layer(device: &DeviceRef, window: &Window) -> MetalLayer {
         unsafe {
             let view = handle.ns_view.as_ptr() as id;
             view.setWantsLayer(YES);
-            view.setLayer(mem::transmute(layer.as_ref()));
+            view.setLayer(
+                layer.as_ref() as *const metal::MetalLayerRef as *mut metal::objc::runtime::Object
+            );
         }
     }
 
@@ -69,7 +71,7 @@ fn create_metal_layer(device: &DeviceRef, window: &Window) -> MetalLayer {
     let scale_factor = window.scale_factor();
     layer.set_contents_scale(scale_factor);
 
-    return layer;
+    layer
 }
 
 fn create_pipeline(
@@ -166,7 +168,7 @@ fn create_pipeline_descriptor(
         .layouts()
         .set_object_at(1, Some(&instance_buffer));
 
-    pipeline_descriptor.set_vertex_descriptor(Some(&vertex_descriptor));
+    pipeline_descriptor.set_vertex_descriptor(Some(vertex_descriptor));
 
     pipeline_descriptor
 }
@@ -196,7 +198,7 @@ fn sphere_vertices(rings: f32, slices: f32) -> [Vertex; SPHERE_VERTEX_COUNT] {
 
             let idx = ((slices as i32 * 6 * i) + (j * 6)) as usize;
 
-            data[idx + 0] = vertex(fi, fj);
+            data[idx] = vertex(fi, fj);
             data[idx + 1] = vertex(fi + 1.0, fj + 1.0);
             data[idx + 2] = vertex(fi + 1.0, fj);
             data[idx + 3] = vertex(fi, fj);
@@ -267,7 +269,7 @@ impl FastBallRenderer {
         let device = Device::system_default().expect("no device found");
         let command_queue = device.new_command_queue();
 
-        let layer = create_metal_layer(&device, &window);
+        let layer = create_metal_layer(&device, window);
 
         let pipeline = create_pipeline(&device, SHADER_LIBRARY, "vertex_main", "fragment_main");
 
@@ -370,12 +372,12 @@ impl FastBallRenderer {
         depth_attachment.set_store_action(MTLStoreAction::DontCare);
 
         let command_buffer = self.command_queue.new_command_buffer();
-        let encoder = command_buffer.new_render_command_encoder(&render_pass);
+        let encoder = command_buffer.new_render_command_encoder(render_pass);
 
         f(encoder);
 
         encoder.end_encoding();
-        command_buffer.present_drawable(&drawable);
+        command_buffer.present_drawable(drawable);
         command_buffer.commit();
     }
 }

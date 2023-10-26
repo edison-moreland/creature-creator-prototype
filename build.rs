@@ -1,12 +1,12 @@
 use std::env;
-use std::path::PathBuf;
-use std::process::{Command, Output};
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
 fn main() {
     compile_shader(&PathBuf::from("src/renderer/shader.metal"));
 }
 
-fn compile_shader(shader_source: &PathBuf) {
+fn compile_shader(shader_source: &Path) {
     println!("cargo:rerun-if-changed={}", shader_source.to_str().unwrap());
 
     let shader_name = shader_source
@@ -24,7 +24,7 @@ fn compile_shader(shader_source: &PathBuf) {
     let air_path = intermediate_dir.join(format!("{}.air", shader_name));
     let metallib_path = out_dir.join(format!("{}.metallib", shader_name));
 
-    panic_if_failed(Command::new("xcrun").args(&[
+    panic_if_failed(Command::new("xcrun").args([
         "-sdk",
         "macosx",
         "metal",
@@ -36,7 +36,7 @@ fn compile_shader(shader_source: &PathBuf) {
         air_path.to_str().unwrap(),
     ]));
 
-    panic_if_failed(Command::new("xcrun").args(&[
+    panic_if_failed(Command::new("xcrun").args([
         "-sdk",
         "macosx",
         "metallib",

@@ -9,7 +9,7 @@ pub fn gradient(surface: impl Fn(Vector3<f32>) -> f32, p: Vector3<f32>) -> Vecto
     let dy = (surface(vector![p.x, p.y + h, p.z]) - surface(p)) / h;
     let dz = (surface(vector![p.x, p.y, p.z + h]) - surface(p)) / h;
 
-    return vector![dx, dy, dz];
+    vector![dx, dy, dz]
 }
 
 pub fn on_surface(surface: impl Fn(Vector3<f32>) -> f32, point: Vector3<f32>) -> bool {
@@ -20,7 +20,7 @@ pub fn quadratic_surface(coefficients: Matrix4<f32>) -> impl Fn(Vector3<f32>) ->
     move |p| {
         let mp = matrix![p.x, p.y, p.z, 1.0];
 
-        return (mp * coefficients * mp.transpose()).x;
+        (mp * coefficients * mp.transpose()).x
     }
 }
 
@@ -34,7 +34,7 @@ pub fn ellipsoid(a: f32, b: f32, c: f32) -> impl Fn(Vector3<f32>) -> f32 {
 }
 
 pub fn sphere(r: f32) -> impl Fn(Vector3<f32>) -> f32 {
-    return ellipsoid(r, r, r);
+    ellipsoid(r, r, r)
 }
 
 pub fn rotate(
