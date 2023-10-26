@@ -132,6 +132,7 @@ impl RelaxationSystem {
         for _ in 0..UPDATE_ITERATIONS {
             for j in (0..self.living_particles.len()).rev() {
                 let i = self.living_particles[j];
+                assert!(i < MAX_PARTICLE_COUNT);
 
                 let neighbour_indices = self.position_index.get_indices_within(
                     &self.particles_a,
@@ -143,6 +144,8 @@ impl RelaxationSystem {
                     .iter()
                     .filter(|j| **j != i)
                     .map(|j| {
+                        assert!(*j < MAX_PARTICLE_COUNT);
+
                         let pi = self.particles_a[i];
                         let pj = self.particles_a[*j];
 
