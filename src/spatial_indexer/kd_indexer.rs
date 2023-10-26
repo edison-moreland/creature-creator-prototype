@@ -77,6 +77,7 @@ fn _split<T: Positioned + Debug>(
     mut items: Vec<usize>,
     axis: SplitAxis,
 ) -> (f32, Vec<usize>, Vec<usize>) {
+    // TODO: This could probably be fast using select and split_off, but construction isn't a bottleneck
     let item_count = items.len();
     let midpoint = {
         let mut total = 0.0;
@@ -91,7 +92,7 @@ fn _split<T: Positioned + Debug>(
     let mut right = vec![];
 
     for idx in items.drain(..) {
-        if axis.component(&item_arena[idx].position()) < midpoint {
+        if axis.component(&item_arena[idx].position()) > midpoint {
             right.push(idx)
         } else {
             left.push(idx)
@@ -109,7 +110,6 @@ fn _insert_item_index<T: Positioned + Debug>(
 ) {
     match tree {
         KdTree::Leaf(l) => {
-            // item_arena.push(item);
             l.push(index);
 
             let leaf_size = l.len();
@@ -129,7 +129,7 @@ fn _insert_item_index<T: Positioned + Debug>(
         }
         KdTree::Node(n) => {
             // Point needs to be inserted into one side
-            if n.axis.component(&item_arena[index].position()) < n.midpoint {
+            if n.axis.component(&item_arena[index].position()) > n.midpoint {
                 _insert_item_index(item_arena, n.right.as_mut(), n.axis, index);
             } else {
                 _insert_item_index(item_arena, n.left.as_mut(), n.axis, index);
@@ -158,7 +158,7 @@ fn _remove_item_index<T: Positioned + Debug>(item_arena: &[T], tree: &mut KdTree
         }
         KdTree::Node(n) => {
             // Point needs to be inserted into one side
-            if n.axis.component(&item_arena[index].position()) < n.midpoint {
+            if n.axis.component(&item_arena[index].position()) > n.midpoint {
                 _remove_item_index(item_arena, n.right.as_mut(), index);
             } else {
                 _remove_item_index(item_arena, n.left.as_mut(), index);
@@ -186,9 +186,9 @@ fn _any_indices_within<T: Positioned + Debug>(
         KdTree::Node(n) => {
             let component = n.axis.component(&origin);
 
-            ((component + radius >= n.midpoint)
+            ((component - radius <= n.midpoint)
                 && _any_indices_within(item_arena, n.left.as_ref(), origin, radius))
-                || ((component - radius < n.midpoint)
+                || ((component + radius > n.midpoint)
                     && _any_indices_within(item_arena, n.right.as_ref(), origin, radius))
         }
     }
@@ -214,11 +214,11 @@ fn _get_indices_within<T: Positioned + Debug>(
         KdTree::Node(n) => {
             let component = n.axis.component(&origin);
 
-            if component + radius >= n.midpoint {
+            if component - radius <= n.midpoint {
                 _get_indices_within(item_arena, &n.left, origin, radius, items)
             }
 
-            if component - radius < n.midpoint {
+            if component + radius > n.midpoint {
                 _get_indices_within(item_arena, &n.right, origin, radius, items)
             }
         }
