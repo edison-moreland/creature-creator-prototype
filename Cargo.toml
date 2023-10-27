@@ -16,6 +16,6 @@ rayon = "1.8.0"
 winit = "0.29.2"
 
 # Metal deps:
-metal = "0.26.0"
+metal = "0.27.0"
 cocoa = "0.25.0"
 core-graphics-types = "0.1"
