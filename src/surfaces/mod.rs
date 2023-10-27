@@ -1,3 +1,4 @@
+pub mod body;
 pub mod primitives;
 
 use nalgebra::{vector, Vector3};

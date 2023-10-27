@@ -14,6 +14,7 @@ use winit::{
 use crate::relaxation::RelaxationSystem;
 use crate::renderer::{Camera, Renderer, Sphere, Widget};
 use crate::sampling::sample;
+use crate::surfaces::body::Limb;
 use crate::surfaces::primitives::{ellipsoid, rotate, smooth_union, sphere, translate, union};
 use crate::surfaces::{Surface, SurfaceFn};
 
@@ -26,26 +27,36 @@ mod spatial_indexer;
 mod surfaces;
 
 fn surface() -> impl Surface {
-    SurfaceFn::new(vector![0.0, 0.0, 10.0], |t: f32, p: Vector3<f32>| -> f32 {
-        smooth_union(
-            sphere(10.0),
-            union(
-                rotate(
-                    vector![0.0, (t * 40.0) % 360.0, 0.0],
-                    smooth_union(
-                        translate(vector![-10.0, 0.0, 0.0], ellipsoid(10.0, 5.0, 5.0)),
-                        translate(vector![-20.0, 0.0, 0.0], sphere(10.0)),
-                        0.5,
-                    ),
-                ),
-                translate(
-                    vector![0.0, (t).sin() * 10.0, 0.0],
-                    ellipsoid(5.0, 10.0, 5.0),
-                ),
-            ),
-            0.5,
-        )(p)
-    })
+    Limb::new(
+        vector![0.0, 10.0, 0.0],
+        vector![0.0, 0.0, 0.0],
+        vec![
+            (vector![0.0, 0.0, 0.0], vector![2.0, 2.0, 2.0]),
+            (vector![0.0, 0.0, -2.0], vector![1.0, 0.5, 1.0]),
+            (vector![0.0, 0.0, 2.0], vector![1.0, 0.5, 1.0]),
+        ],
+    )
+
+    // SurfaceFn::new(vector![0.0, 0.0, 10.0], |t: f32, p: Vector3<f32>| -> f32 {
+    //     smooth_union(
+    //         sphere(10.0),
+    //         union(
+    //             rotate(
+    //                 vector![0.0, (t * 40.0) % 360.0, 0.0],
+    //                 smooth_union(
+    //                     translate(vector![-10.0, 0.0, 0.0], ellipsoid(10.0, 5.0, 5.0)),
+    //                     translate(vector![-20.0, 0.0, 0.0], sphere(10.0)),
+    //                     0.5,
+    //                 ),
+    //             ),
+    //             translate(
+    //                 vector![0.0, (t).sin() * 10.0, 0.0],
+    //                 ellipsoid(5.0, 10.0, 5.0),
+    //             ),
+    //         ),
+    //         0.5,
+    //     )(p)
+    // })
 }
 
 fn cardinal_widgets() -> Vec<Widget> {
@@ -128,7 +139,10 @@ impl<S: Surface> App<S> {
 
         let sample_radius = 0.5;
 
+        println!("Initial sampling...");
         let points = sample(&surface, surface.sample_point(), sample_radius);
+
+        println!("Done! Initializing particle system...");
         let particle_system = RelaxationSystem::new(points, sample_radius, surface);
 
         let mut widgets = grid_widgets();
