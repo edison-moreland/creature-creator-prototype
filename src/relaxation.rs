@@ -6,7 +6,7 @@ use nalgebra::{vector, Vector3};
 use crate::buffer_allocator::{BufferAllocator, StackBufferAllocator};
 use crate::spatial_indexer::kd_indexer::KdIndexer;
 use crate::spatial_indexer::{Positioned, SpatialIndexer};
-use crate::surfaces::gradient;
+use crate::surfaces::{gradient, Surface};
 
 const REPULSION_AMPLITUDE: f32 = 6.0;
 const FEEDBACK: f32 = 15.0;
@@ -33,13 +33,15 @@ fn energy_contribution(i_repulsion_radius: f32, i: Vector3<f32>, j: Vector3<f32>
 }
 
 fn constrain_to_surface(
-    surface: impl Fn(Vector3<f32>) -> f32,
+    surface: &impl Surface,
+    t: f32,
     position: Vector3<f32>,
     velocity: Vector3<f32>,
 ) -> Vector3<f32> {
-    let grad = gradient(&surface, position);
+    let grad = gradient(surface, t, position);
     velocity
-        - grad.scale((grad.dot(&velocity) + (FEEDBACK * surface(position))) / (grad.dot(&grad)))
+        - grad
+            .scale((grad.dot(&velocity) + (FEEDBACK * surface.at(t, position))) / (grad.dot(&grad)))
 }
 
 fn should_die(radius: f32, desired_radius: f32) -> bool {
@@ -71,17 +73,20 @@ impl Positioned for Particle {
     }
 }
 
-pub struct RelaxationSystem {
+pub struct RelaxationSystem<S> {
     living_particles: Vec<usize>,
     position_index: KdIndexer,
     index_allocator: StackBufferAllocator<MAX_PARTICLE_COUNT>,
 
     particles_a: [Particle; MAX_PARTICLE_COUNT],
     particles_b: [Particle; MAX_PARTICLE_COUNT],
+
+    surface: S,
+    pub t: f32,
 }
 
-impl RelaxationSystem {
-    pub fn new(positions: Vec<Vector3<f32>>, sample_radius: f32) -> Self {
+impl<S: Surface> RelaxationSystem<S> {
+    pub fn new(positions: Vec<Vector3<f32>>, sample_radius: f32, surface: S) -> Self {
         if positions.len() > MAX_PARTICLE_COUNT {
             panic!("TOO DANG BIG!!")
         }
@@ -113,22 +118,26 @@ impl RelaxationSystem {
 
             particles_a: particles,
             particles_b: particles,
+
+            surface,
+            t: 0.0,
         }
     }
 
-    pub fn positions(&self) -> impl Iterator<Item = (Vector3<f32>, f32)> + ExactSizeIterator + '_ {
-        self.living_particles
-            .iter()
-            .map(|i| (self.particles_a[*i].position, self.particles_a[*i].radius))
+    pub fn positions(
+        &self,
+    ) -> impl Iterator<Item = (Vector3<f32>, Vector3<f32>, f32)> + ExactSizeIterator + '_ {
+        self.living_particles.iter().map(|i| {
+            let particle = self.particles_a[*i];
+            let normal = gradient(&self.surface, self.t, particle.position).normalize();
+
+            (particle.position, normal, particle.radius)
+        })
         //
         // self.particles_a.iter().map(|p| (p.position, p.radius))
     }
 
-    pub fn update(
-        &mut self,
-        desired_radius: f32,
-        surface: impl Fn(Vector3<f32>) -> f32 + Send + Sync,
-    ) {
+    pub fn update(&mut self, desired_radius: f32) {
         for _ in 0..UPDATE_ITERATIONS {
             for j in (0..self.living_particles.len()).rev() {
                 let i = self.living_particles[j];
@@ -193,7 +202,8 @@ impl RelaxationSystem {
                 }
 
                 let velocity = constrain_to_surface(
-                    &surface,
+                    &self.surface,
+                    self.t,
                     particle.position,
                     self.particle_velocity(particle.position, particle.radius, &neighbours),
                 );
@@ -214,6 +224,8 @@ impl RelaxationSystem {
             self.position_index
                 .reindex(&self.particles_a, self.living_particles.clone());
         }
+
+        self.t += ITERATION_T_STEP
     }
 
     fn repulsion_energy(&self, neighbours: &[(usize, f32, f32)]) -> f32 {

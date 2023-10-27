@@ -14,8 +14,8 @@ use winit::{
 use crate::relaxation::RelaxationSystem;
 use crate::renderer::{Camera, FastBallRenderer, Instance};
 use crate::sampling::sample;
-use crate::surfaces::{ellipsoid, gradient, rotate, smooth_union, sphere, translate, union};
-
+use crate::surfaces::primitives::{ellipsoid, rotate, smooth_union, sphere, translate, union};
+use crate::surfaces::{gradient, Surface, SurfaceFn};
 mod buffer_allocator;
 mod relaxation;
 mod renderer;
@@ -23,54 +23,41 @@ mod sampling;
 mod spatial_indexer;
 mod surfaces;
 
-fn surface_at(t: f32) -> impl Fn(Vector3<f32>) -> f32 {
-    smooth_union(
-        sphere(10.0),
-        union(
-            rotate(
-                vector![0.0, (t * 40.0) % 360.0, 0.0],
-                smooth_union(
-                    translate(vector![-10.0, 0.0, 0.0], ellipsoid(10.0, 5.0, 5.0)),
-                    translate(vector![-20.0, 0.0, 0.0], sphere(10.0)),
-                    0.5,
+fn surface() -> impl Surface {
+    SurfaceFn::new(vector![0.0, 0.0, 10.0], |t: f32, p: Vector3<f32>| -> f32 {
+        smooth_union(
+            sphere(10.0),
+            union(
+                rotate(
+                    vector![0.0, (t * 40.0) % 360.0, 0.0],
+                    smooth_union(
+                        translate(vector![-10.0, 0.0, 0.0], ellipsoid(10.0, 5.0, 5.0)),
+                        translate(vector![-20.0, 0.0, 0.0], sphere(10.0)),
+                        0.5,
+                    ),
+                ),
+                translate(
+                    vector![0.0, (t).sin() * 10.0, 0.0],
+                    ellipsoid(5.0, 10.0, 5.0),
                 ),
             ),
-            translate(
-                vector![0.0, (t).sin() * 10.0, 0.0],
-                ellipsoid(5.0, 10.0, 5.0),
-            ),
-        ),
-        0.5,
-    )
-
-    // smooth_union(
-    //     sphere(10.0),
-    //     union(
-    //         translate(
-    //             vector![(t).sin() * 10.0, 0.0, 0.0],
-    //             ellipsoid(10.0, 5.0, 5.0),
-    //         ),
-    //         translate(
-    //             vector![0.0, 0.0, (t).cos() * 10.0],
-    //             ellipsoid(5.0, 5.0, 10.0),
-    //         ),
-    //     ),
-    //     0.5,
-    // )
+            0.5,
+        )(p)
+    })
 }
 
-struct App {
+struct App<S> {
     window: Window,
 
     renderer: FastBallRenderer,
-
+    // surface: S,
     t: f32,
     desired_radius: f32,
-    particle_system: RelaxationSystem,
+    particle_system: RelaxationSystem<S>,
 }
 
-impl App {
-    fn init(event_loop: &EventLoopWindowTarget<()>) -> Self {
+impl<S: Surface> App<S> {
+    fn init(event_loop: &EventLoopWindowTarget<()>, surface: S) -> Self {
         let window = WindowBuilder::new()
             .with_title("Creature Creator")
             .with_inner_size(LogicalSize::new(600, 300))
@@ -83,8 +70,9 @@ impl App {
         );
 
         let sample_radius = 0.5;
-        let points = sample(surface_at(0.0), vector![0.0, 0.0, 10.0], sample_radius);
-        let particle_system = RelaxationSystem::new(points, sample_radius);
+
+        let points = sample(&surface, surface.sample_point(), sample_radius);
+        let particle_system = RelaxationSystem::new(points, sample_radius, surface);
 
         App {
             window,
@@ -92,6 +80,7 @@ impl App {
             t: 0.0,
             desired_radius: 0.4,
             particle_system,
+            // surface,
         }
     }
 
@@ -104,24 +93,27 @@ impl App {
     }
 
     fn draw(&mut self) {
-        self.t += 0.03;
-        let surface = surface_at(self.t);
+        // self.t += 0.03;
+        // let surface = surface_at(self.t);
 
         let start = Instant::now();
-        self.particle_system.update(self.desired_radius, &surface);
+        self.particle_system.update(self.desired_radius);
         let p_duration = start.elapsed();
 
         let start = Instant::now();
-        self.renderer
-            .draw(self.particle_system.positions().map(|(point, radius)| {
-                let normal = gradient(&surface, point).normalize();
+        self.renderer.draw(
+            self.particle_system
+                .positions()
+                .map(|(point, normal, radius)| {
+                    // let normal = gradient(&self.surface, self.particle_system.time, point).normalize();
 
-                Instance {
-                    center: point.data.0[0],
-                    normal: normal.data.0[0],
-                    radius,
-                }
-            }));
+                    Instance {
+                        center: point.data.0[0],
+                        normal: normal.data.0[0],
+                        radius,
+                    }
+                }),
+        );
         let r_duration = start.elapsed();
 
         dbg!(p_duration, r_duration);
@@ -135,7 +127,7 @@ fn main() {
     event_loop
         .run(move |event, event_loop| match event {
             Event::NewEvents(StartCause::Init) => {
-                app.replace(App::init(event_loop));
+                app.replace(App::init(event_loop, surface()));
 
                 event_loop.set_control_flow(ControlFlow::Poll)
             }

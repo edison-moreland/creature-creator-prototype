@@ -1,20 +1,8 @@
 use std::f32::consts::PI;
 
-use nalgebra::{matrix, vector, Matrix4, Rotation3, Vector3};
+use nalgebra::{matrix, Matrix4, Rotation3, Vector3};
 
-pub fn gradient(surface: impl Fn(Vector3<f32>) -> f32, p: Vector3<f32>) -> Vector3<f32> {
-    let h = 0.0001;
-
-    let dx = (surface(vector![p.x + h, p.y, p.z]) - surface(p)) / h;
-    let dy = (surface(vector![p.x, p.y + h, p.z]) - surface(p)) / h;
-    let dz = (surface(vector![p.x, p.y, p.z + h]) - surface(p)) / h;
-
-    vector![dx, dy, dz]
-}
-
-pub fn on_surface(surface: impl Fn(Vector3<f32>) -> f32, point: Vector3<f32>) -> bool {
-    surface(point).abs() <= f32::EPSILON
-}
+// Basic primitives to build a surface out of
 
 pub fn quadratic_surface(coefficients: Matrix4<f32>) -> impl Fn(Vector3<f32>) -> f32 {
     move |p| {
