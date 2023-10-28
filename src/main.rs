@@ -14,7 +14,7 @@ use winit::{
 use crate::relaxation::RelaxationSystem;
 use crate::renderer::{Camera, Renderer, Sphere, Widget};
 use crate::sampling::sample;
-use crate::surfaces::body::Limb;
+use crate::surfaces::limb::Limb;
 use crate::surfaces::primitives::{ellipsoid, rotate, smooth_union, sphere, translate, union};
 use crate::surfaces::{Surface, SurfaceFn};
 
