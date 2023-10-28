@@ -362,7 +362,7 @@ impl FastBallRenderer {
         let color_attachment = render_pass.color_attachments().object_at(0).unwrap();
         color_attachment.set_texture(Some(drawable.texture()));
         color_attachment.set_load_action(MTLLoadAction::Clear);
-        color_attachment.set_clear_color(MTLClearColor::new(0.0, 0.0, 0.0, 1.0));
+        color_attachment.set_clear_color(MTLClearColor::new(1.0, 1.0, 1.0, 1.0));
         color_attachment.set_store_action(MTLStoreAction::Store);
 
         let depth_attachment = render_pass.depth_attachment().unwrap();
