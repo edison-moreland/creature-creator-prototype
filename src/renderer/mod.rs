@@ -14,14 +14,16 @@ use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
 use winit::window::Window;
 
 use crate::renderer::shared::Shared;
-use crate::renderer::sphere_pass::SphereRenderPass;
+use crate::renderer::sphere_pipeline::SpherePipeline;
 
-pub use crate::renderer::sphere_pass::Sphere;
+pub use crate::renderer::sphere_pipeline::Sphere;
 pub use crate::renderer::uniforms::Camera;
+use crate::renderer::widget_pipeline::{Vertex, WidgetPipeline};
 
 mod shared;
-mod sphere_pass;
+mod sphere_pipeline;
 mod uniforms;
+mod widget_pipeline;
 
 fn create_metal_layer(device: &DeviceRef, window: &Window) -> MetalLayer {
     let layer = MetalLayer::new();
@@ -79,7 +81,8 @@ pub struct Renderer {
     camera: Camera,
     uniforms: Shared<Uniforms>,
 
-    sphere_render_pass: SphereRenderPass,
+    sphere_pipeline: SpherePipeline,
+    widget_pipeline: WidgetPipeline,
 }
 
 impl Renderer {
@@ -97,7 +100,9 @@ impl Renderer {
         camera.aspect_ratio_updated(size.width as f32 / size.height as f32);
         let uniforms = Shared::new(&device, Uniforms::new(&camera));
 
-        let sphere_render_pass = SphereRenderPass::new(&device);
+        let sphere_pipeline = SpherePipeline::new(&device);
+
+        let widget_pipeline = WidgetPipeline::new(&device);
 
         Renderer {
             device,
@@ -107,7 +112,8 @@ impl Renderer {
             depth_target,
             camera,
             uniforms,
-            sphere_render_pass,
+            sphere_pipeline,
+            widget_pipeline,
         }
     }
 
@@ -132,13 +138,28 @@ impl Renderer {
             None => return,
         };
 
-        self.sphere_render_pass.update_instance_buffer(instances);
+        self.sphere_pipeline.update_instance_buffer(instances);
 
-        self.render_pass(
-            drawable,
-            self.sphere_render_pass
-                .draw_spheres(&self.depth_state, &self.uniforms),
-        )
+        self.widget_pipeline.update_widgets(
+            vec![
+                Vertex {
+                    position: [-10.0, 0.0, 0.0],
+                    color: [1.0, 0.0, 0.0],
+                },
+                Vertex {
+                    position: [10.0, 0.0, 0.0],
+                    color: [1.0, 0.0, 0.0],
+                },
+            ]
+            .as_slice(),
+        );
+
+        self.render_pass(drawable, |encoder| {
+            self.sphere_pipeline
+                .draw_spheres(&self.depth_state, &self.uniforms)(encoder);
+            self.widget_pipeline
+                .draw_widgets(&self.depth_state, &self.uniforms)(encoder);
+        })
     }
 
     fn render_pass<F>(&self, drawable: &MetalDrawableRef, f: F)

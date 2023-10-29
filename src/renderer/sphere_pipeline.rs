@@ -29,7 +29,7 @@ pub struct Sphere {
     pub radius: f32,
     pub normal: [f32; 3],
 }
-pub struct SphereRenderPass {
+pub struct SpherePipeline {
     pipeline: RenderPipelineState,
 
     instance_count: usize,
@@ -75,7 +75,7 @@ fn sphere_vertices(rings: f32, slices: f32) -> [Vertex; SPHERE_VERTEX_COUNT] {
 }
 
 // Initialization
-impl SphereRenderPass {
+impl SpherePipeline {
     fn new_pipeline(device: &DeviceRef) -> RenderPipelineState {
         let library = device
             .new_library_with_data(SPHERE_SHADER_LIBRARY)
@@ -191,7 +191,7 @@ impl SphereRenderPass {
 }
 
 // Drawing
-impl SphereRenderPass {
+impl SpherePipeline {
     pub fn update_instance_buffer(&mut self, spheres: &[Sphere]) {
         let instance_count = spheres.len();
         if instance_count > MAX_INSTANCE_COUNT {
