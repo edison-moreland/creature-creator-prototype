@@ -2,6 +2,8 @@ use std::f32::consts::PI;
 
 use nalgebra::{Isometry3, Perspective3, Point3, Vector3};
 
+// Uniforms are shared between all render passes
+
 #[repr(C)]
 pub struct Uniforms {
     camera: [[f32; 4]; 4],
