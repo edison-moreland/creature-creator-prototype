@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 fn main() {
-    compile_shader(&PathBuf::from("src/renderer/shader.metal"));
+    compile_shader(&PathBuf::from("src/renderer/sphere_shader.metal"));
 }
 
 fn compile_shader(shader_source: &Path) {

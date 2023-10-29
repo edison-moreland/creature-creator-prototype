@@ -1,21 +1,22 @@
 use std::time::Instant;
 
 use nalgebra::{point, vector, Vector3};
-use winit::dpi::{LogicalSize, PhysicalSize};
-use winit::event::StartCause;
-use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
-use winit::window::Window;
 use winit::{
     event::{Event, WindowEvent},
     event_loop::EventLoop,
     window::WindowBuilder,
 };
+use winit::dpi::{LogicalSize, PhysicalSize};
+use winit::event::StartCause;
+use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
+use winit::window::Window;
 
 use crate::relaxation::RelaxationSystem;
-use crate::renderer::{Camera, FastBallRenderer, Instance};
+use crate::renderer::{Camera, FastBallRenderer, Sphere};
 use crate::sampling::sample;
+use crate::surfaces::{Surface, SurfaceFn};
 use crate::surfaces::primitives::{ellipsoid, rotate, smooth_union, sphere, translate, union};
-use crate::surfaces::{gradient, Surface, SurfaceFn};
+
 mod buffer_allocator;
 mod relaxation;
 mod renderer;
@@ -104,15 +105,13 @@ impl<S: Surface> App<S> {
         self.renderer.draw(
             self.particle_system
                 .positions()
-                .map(|(point, normal, radius)| {
-                    // let normal = gradient(&self.surface, self.particle_system.time, point).normalize();
-
-                    Instance {
-                        center: point.data.0[0],
-                        normal: normal.data.0[0],
-                        radius,
-                    }
-                }),
+                .map(|(point, normal, radius)| Sphere {
+                    center: point.data.0[0],
+                    normal: normal.data.0[0],
+                    radius,
+                })
+                .collect::<Vec<Sphere>>()
+                .as_slice(),
         );
         let r_duration = start.elapsed();
 
