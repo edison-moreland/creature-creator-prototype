@@ -1,7 +1,9 @@
 #include <metal_stdlib>
 using namespace metal;
 
-#define backgroundColor float3(1.0, 1.0, 1.0)
+// https://coolors.co/d60270-9b4f96-0038a8-302b27-f5f3f5
+#define backgroundColor float3(0.960, 0.991, 0.960)
+#define foregroundColor float3(0.188, 0.168, 0.152)
 #define pinkColor float3(0.839, 0.007, 0.497)
 #define purpleColor float3(0.607, 0.309, 0.588)
 #define blueColor float3(0.0, 0.219, 0.658)
@@ -45,7 +47,7 @@ float3 light_sample(
         0.5,
         float3(-50.0, -50.0, -50.0),
         pinkColor,
-        1.00
+        0.50
     ) +
     lambert_contribution(
         sample_normal,
@@ -53,7 +55,7 @@ float3 light_sample(
         0.5,
         float3(0.0, -50.0, -50.0),
         purpleColor,
-        1.00
+        0.75
     ) +
     lambert_contribution(
         sample_normal,
