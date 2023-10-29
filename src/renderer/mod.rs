@@ -1,32 +1,27 @@
-use std::f32::consts::PI;
-
 use cocoa::appkit::NSView;
 use cocoa::base::id;
 use core_graphics_types::geometry::CGSize;
-use metal::{
-    CommandQueue, DepthStencilDescriptor, DepthStencilState, Device, DeviceRef,
-    MetalDrawableRef, MetalLayer, MTLClearColor, MTLCompareFunction,
-    MTLLoadAction, MTLPixelFormat, MTLStorageMode,
-    MTLStoreAction, MTLTextureUsage, RenderCommandEncoderRef,
-    Texture, TextureDescriptor,
-};
 use metal::objc::runtime::YES;
-use nalgebra::{Isometry3, Perspective3, Point3, Vector3};
+use metal::{
+    CommandQueue, DepthStencilDescriptor, DepthStencilState, Device, DeviceRef, MTLClearColor,
+    MTLCompareFunction, MTLLoadAction, MTLPixelFormat, MTLStorageMode, MTLStoreAction,
+    MTLTextureUsage, MetalDrawableRef, MetalLayer, RenderCommandEncoderRef, Texture,
+    TextureDescriptor,
+};
+use uniforms::Uniforms;
 use winit::dpi::PhysicalSize;
 use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
 use winit::window::Window;
 
 use crate::renderer::shared::Shared;
-pub use crate::renderer::sphere_pass::Sphere;
 use crate::renderer::sphere_pass::SphereRenderPass;
+
+pub use crate::renderer::sphere_pass::Sphere;
+pub use crate::renderer::uniforms::Camera;
 
 mod shared;
 mod sphere_pass;
-
-#[repr(C)]
-pub struct Uniforms {
-    camera: [[f32; 4]; 4],
-}
+mod uniforms;
 
 fn create_metal_layer(device: &DeviceRef, window: &Window) -> MetalLayer {
     let layer = MetalLayer::new();
@@ -73,27 +68,7 @@ fn create_depth_state(device: &DeviceRef) -> DepthStencilState {
     device.new_depth_stencil_state(&depth_stencil_descriptor)
 }
 
-pub struct Camera {
-    eye: Point3<f32>,
-    target: Point3<f32>,
-    fov: f32,
-}
-
-impl Camera {
-    pub fn new(eye: Point3<f32>, target: Point3<f32>, fov: f32) -> Self {
-        Camera { eye, target, fov }
-    }
-
-    fn mvp_matrix(&self, aspect_ratio: f32) -> [[f32; 4]; 4] {
-        let view = Isometry3::look_at_rh(&self.eye, &self.target, &Vector3::y());
-
-        let proj = Perspective3::new(aspect_ratio, self.fov * (180.0 / PI), 0.01, 10000.0);
-
-        (proj.as_matrix() * view.to_homogeneous()).data.0
-    }
-}
-
-pub struct FastBallRenderer {
+pub struct Renderer {
     device: Device,
     layer: MetalLayer,
     command_queue: CommandQueue,
@@ -107,8 +82,8 @@ pub struct FastBallRenderer {
     sphere_render_pass: SphereRenderPass,
 }
 
-impl FastBallRenderer {
-    pub fn new(window: &Window, camera: Camera) -> Self {
+impl Renderer {
+    pub fn new(window: &Window, mut camera: Camera) -> Self {
         let device = Device::system_default().expect("no device found");
         let command_queue = device.new_command_queue();
 
@@ -119,16 +94,12 @@ impl FastBallRenderer {
         let depth_target = prepare_depth_target(&device, size);
         let depth_state = create_depth_state(&device);
 
-        let uniforms = Shared::new(
-            &device,
-            Uniforms {
-                camera: camera.mvp_matrix(size.width as f32 / size.height as f32),
-            },
-        );
+        camera.aspect_ratio_updated(size.width as f32 / size.height as f32);
+        let uniforms = Shared::new(&device, Uniforms::new(&camera));
 
         let sphere_render_pass = SphereRenderPass::new(&device);
 
-        FastBallRenderer {
+        Renderer {
             device,
             layer,
             command_queue,
@@ -145,9 +116,10 @@ impl FastBallRenderer {
             .set_drawable_size(CGSize::new(new_size.width as f64, new_size.height as f64));
 
         self.depth_target = prepare_depth_target(&self.device, new_size);
-        self.uniforms.camera = self
-            .camera
-            .mvp_matrix(new_size.width as f32 / new_size.height as f32);
+
+        self.camera
+            .aspect_ratio_updated(new_size.width as f32 / new_size.height as f32);
+        self.uniforms.camera_updated(&self.camera)
     }
 
     pub fn rescaled(&self, scale_factor: f64) {

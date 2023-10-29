@@ -1,21 +1,21 @@
 use std::time::Instant;
 
 use nalgebra::{point, vector, Vector3};
+use winit::dpi::{LogicalSize, PhysicalSize};
+use winit::event::StartCause;
+use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
+use winit::window::Window;
 use winit::{
     event::{Event, WindowEvent},
     event_loop::EventLoop,
     window::WindowBuilder,
 };
-use winit::dpi::{LogicalSize, PhysicalSize};
-use winit::event::StartCause;
-use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
-use winit::window::Window;
 
 use crate::relaxation::RelaxationSystem;
-use crate::renderer::{Camera, FastBallRenderer, Sphere};
+use crate::renderer::{Camera, Renderer, Sphere};
 use crate::sampling::sample;
-use crate::surfaces::{Surface, SurfaceFn};
 use crate::surfaces::primitives::{ellipsoid, rotate, smooth_union, sphere, translate, union};
+use crate::surfaces::{Surface, SurfaceFn};
 
 mod buffer_allocator;
 mod relaxation;
@@ -50,7 +50,7 @@ fn surface() -> impl Surface {
 struct App<S> {
     window: Window,
 
-    renderer: FastBallRenderer,
+    renderer: Renderer,
     // surface: S,
     t: f32,
     desired_radius: f32,
@@ -65,7 +65,7 @@ impl<S: Surface> App<S> {
             .build(event_loop)
             .unwrap();
 
-        let renderer = FastBallRenderer::new(
+        let renderer = Renderer::new(
             &window,
             Camera::new(point![40.0, 40.0, 40.0], point![0.0, 0.0, 0.0], 60.0),
         );
