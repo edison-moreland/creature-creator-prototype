@@ -31,7 +31,7 @@ fn surface() -> impl Surface {
         vector![0.0, 10.0, 0.0],
         vector![0.0, 0.0, 0.0],
         vec![
-            (vector![0.0, 0.0, 0.0], vector![2.0, 2.0, 2.0]),
+            (vector![0.0, 0.0, 0.0], vector![2.0, 1.0, 2.0]),
             (vector![0.0, 0.0, -2.0], vector![1.0, 0.5, 1.0]),
             (vector![0.0, 0.0, 2.0], vector![1.0, 0.5, 1.0]),
         ],
@@ -146,12 +146,17 @@ impl<S: Surface> App<S> {
         let particle_system = RelaxationSystem::new(points, sample_radius, surface);
 
         let mut widgets = grid_widgets();
-        widgets.append(cardinal_widgets().as_mut());
-        widgets.push(Widget::Circle {
-            origin: vector![0.0, 0.0, 0.0],
-            normal: vector![0.0, 1.0, 0.0],
-            radius: 30.0,
-            color: vector![0.8, 0.0, 0.5],
+        // widgets.append(cardinal_widgets().as_mut());
+        // widgets.push(Widget::Circle {
+        //     origin: vector![0.0, 0.0, 0.0],
+        //     normal: vector![0.0, 1.0, 0.0],
+        //     radius: 30.0,
+        //     color: vector![0.8, 0.0, 0.5],
+        // });
+        widgets.push(Widget::Line {
+            start: vector![0.0, 0.0, 0.0],
+            end: vector![0.0, 10.0, 0.0],
+            color: vector![0.0, 1.0, 0.0],
         });
 
         App {

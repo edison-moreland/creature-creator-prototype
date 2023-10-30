@@ -1,9 +1,11 @@
 use crate::surfaces::primitives::{ellipsoid, translate};
-use crate::surfaces::Surface;
+use crate::surfaces::{gradient, on_surface, Surface};
+use metal::objc::sel;
 use nalgebra::{
     point, vector, Affine3, Isometry3, Matrix, Matrix4, Point3, Rotation3, Scale3, Similarity3,
     TAffine, Transform, Transform3, Translation3, Vector3,
 };
+use std::cmp::Ordering;
 
 // A limb is a straight line from a to b
 // A number of implicit surface live on the limb with a local coordinate system
@@ -37,9 +39,9 @@ impl Limb {
 
         let to = s.to_homogeneous() * r.to_homogeneous() * t.to_homogeneous();
 
-        // assert_eq!(to.transform_point(&origin), point![0.0, 0.0, 0.0]);
-        // assert_eq!(to.transform_point(&Point3::from(b)), point![0.0, -1.0, 0.0]);
-        // assert_eq!(to.transform_point(&Point3::from(a)), point![0.0, 1.0, 0.0]);
+        assert_eq!(to.transform_point(&origin), point![0.0, 0.0, 0.0]);
+        assert_eq!(to.transform_point(&Point3::from(b)), point![0.0, -1.0, 0.0]);
+        assert_eq!(to.transform_point(&Point3::from(a)), point![0.0, 1.0, 0.0]);
 
         Limb {
             to,
@@ -53,23 +55,35 @@ impl Limb {
 
 impl Surface for Limb {
     fn at(&self, _: f32, p: Vector3<f32>) -> f32 {
-        let tp = self.to.transform_vector(&p);
-
-        // dbg!(tp, p);
+        let tp = self.to.transform_point(&Point3::from(p));
 
         self.surfaces
             .iter()
             .map(|(position, params)| {
-                translate(*position, ellipsoid(params.x, params.y, params.z))(tp)
+                translate(*position, ellipsoid(params.x, params.y, params.z))(tp.coords)
             })
             .min_by(|x, y| x.partial_cmp(y).unwrap())
             .unwrap()
     }
 
     fn sample_point(&self) -> Vector3<f32> {
-        let first = self.surfaces.first().unwrap();
+        // Start with a point at the origin and refine it towards the surface
 
-        self.from
-            .transform_vector(&(first.0 + vector![first.1.x, 0.0, 0.0]))
+        let mut point = vector![1.0, 0.0, 0.0];
+
+        for _ in 0..10 {
+            let grad = gradient(self, 0.0, point);
+            point -= grad.scale(self.at(0.0, point) / grad.dot(&grad));
+
+            if on_surface(self, 0.0, point) {
+                break;
+            }
+        }
+
+        if !on_surface(self, 0.0, point) {
+            panic!("uh oh!")
+        }
+
+        point
     }
 }
