@@ -203,13 +203,10 @@ fn _get_indices_within<T: Positioned + Debug>(
 ) {
     match tree {
         KdTree::Leaf(l) => {
-            items.extend(l.iter().filter_map(|i| {
-                if item_arena[*i].position().metric_distance(&origin) <= radius {
-                    Some(i)
-                } else {
-                    None
-                }
-            }));
+            items.extend(
+                l.iter()
+                    .filter(|i| item_arena[**i].position().metric_distance(&origin) <= radius),
+            );
         }
         KdTree::Node(n) => {
             let component = n.axis.component(&origin);

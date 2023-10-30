@@ -167,7 +167,7 @@ impl SpherePipeline {
 
     fn new_instance_buffer(device: &DeviceRef) -> Shared<[Sphere; MAX_INSTANCE_COUNT]> {
         Shared::new(
-            &device,
+            device,
             [Sphere {
                 center: [0.0, 0.0, 0.0],
                 radius: 0.0,
@@ -209,7 +209,7 @@ impl SpherePipeline {
     ) -> impl FnOnce(&RenderCommandEncoderRef) + 'a {
         move |encoder| {
             encoder.set_render_pipeline_state(&self.pipeline);
-            encoder.set_depth_stencil_state(&depth_stencil);
+            encoder.set_depth_stencil_state(depth_stencil);
             encoder.set_vertex_buffer(0, Some(self.vertices.buffer()), 0);
             encoder.set_vertex_buffer(1, Some(self.instances.buffer()), 0);
             encoder.set_vertex_buffer(2, Some(uniforms.buffer()), 0);

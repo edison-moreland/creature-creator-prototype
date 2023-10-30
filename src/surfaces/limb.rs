@@ -1,11 +1,7 @@
+use nalgebra::{point, vector, Matrix4, Point3, Rotation3, Scale3, Translation3, Vector3};
+
 use crate::surfaces::primitives::{ellipsoid, translate};
 use crate::surfaces::{gradient, on_surface, Surface};
-use metal::objc::sel;
-use nalgebra::{
-    point, vector, Affine3, Isometry3, Matrix, Matrix4, Point3, Rotation3, Scale3, Similarity3,
-    TAffine, Transform, Transform3, Translation3, Vector3,
-};
-use std::cmp::Ordering;
 
 // A limb is a straight line from a to b
 // A number of implicit surface live on the limb with a local coordinate system
@@ -15,7 +11,6 @@ pub struct Limb {
     b: Vector3<f32>,
     surfaces: Vec<(Vector3<f32>, Vector3<f32>)>, // (position, ellipsoid params)
     to: Matrix4<f32>,
-    from: Matrix4<f32>,
 }
 
 impl Limb {
@@ -43,13 +38,7 @@ impl Limb {
         assert_eq!(to.transform_point(&Point3::from(b)), point![0.0, -1.0, 0.0]);
         assert_eq!(to.transform_point(&Point3::from(a)), point![0.0, 1.0, 0.0]);
 
-        Limb {
-            to,
-            from: to.try_inverse().unwrap(),
-            a,
-            b,
-            surfaces,
-        }
+        Limb { to, a, b, surfaces }
     }
 }
 
@@ -67,9 +56,9 @@ impl Surface for Limb {
     }
 
     fn sample_point(&self) -> Vector3<f32> {
-        // Start with a point at the origin and refine it towards the surface
-
-        let mut point = vector![1.0, 0.0, 0.0];
+        // Start with a point slight +X and refine it towards the surface
+        // Why slightly +X? It doesn't work otherwise and we don't ask questions.
+        let mut point = self.to.transform_point(&point![1.0, 0.0, 0.0]).coords;
 
         for _ in 0..10 {
             let grad = gradient(self, 0.0, point);

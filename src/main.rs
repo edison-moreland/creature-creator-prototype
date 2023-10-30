@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use nalgebra::{point, vector, Vector3};
+use nalgebra::{point, vector};
 use winit::dpi::{LogicalSize, PhysicalSize};
 use winit::event::StartCause;
 use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
@@ -15,8 +15,7 @@ use crate::relaxation::RelaxationSystem;
 use crate::renderer::{Camera, Renderer, Sphere, Widget};
 use crate::sampling::sample;
 use crate::surfaces::limb::Limb;
-use crate::surfaces::primitives::{ellipsoid, rotate, smooth_union, sphere, translate, union};
-use crate::surfaces::{Surface, SurfaceFn};
+use crate::surfaces::Surface;
 
 mod buffer_allocator;
 mod plane;
@@ -114,6 +113,7 @@ fn grid_widgets() -> Vec<Widget> {
 }
 
 struct App<S> {
+    #[allow(dead_code)] // Window is never used after initialization but it can't be dropped
     window: Window,
 
     renderer: Renderer,

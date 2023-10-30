@@ -226,12 +226,12 @@ impl WidgetPipeline {
     pub fn update_widgets(&mut self, widgets: &[Widget]) {
         let mut segment_count = 0;
         for widget in widgets {
-            match widget {
-                &Widget::Line { start, end, color } => {
+            match *widget {
+                Widget::Line { start, end, color } => {
                     self.segments[segment_count] = Self::segment(start, end, color, 0.1, 0);
                     segment_count += 1;
                 }
-                &Widget::Circle {
+                Widget::Circle {
                     origin,
                     color,
                     normal,
@@ -249,7 +249,7 @@ impl WidgetPipeline {
                         segment_count += 1;
                     }
                 }
-                &Widget::Arrow {
+                Widget::Arrow {
                     origin,
                     direction,
                     magnitude,
@@ -292,7 +292,7 @@ impl WidgetPipeline {
     ) -> impl FnOnce(&RenderCommandEncoderRef) + 'a {
         move |encoder| {
             encoder.set_render_pipeline_state(&self.pipeline);
-            encoder.set_depth_stencil_state(&depth_stencil);
+            encoder.set_depth_stencil_state(depth_stencil);
             encoder.set_vertex_buffer(0, Some(self.vertices.buffer()), 0);
             encoder.set_vertex_buffer(1, Some(self.segments.buffer()), 0);
             encoder.set_vertex_buffer(2, Some(uniforms.buffer()), 0);
