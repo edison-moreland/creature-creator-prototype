@@ -25,16 +25,15 @@ vertex VertexOut vertex_main(Instance inst [[stage_in]],
                              const device float2 *geometry [[buffer(0)]],
                              constant Uniform &uniform [[buffer(2)]])
 {
-    float2 vert_position = geometry[vid + (4*inst.style)];
-
-    float3 size = length(inst.start - inst.end);
     float3 origin = (inst.start + inst.end) / 2.0;
-    float3 to_camera = uniform.camera_position - origin;
+    float size = length(inst.start - inst.end);
+    float2 vert = geometry[vid + (4*inst.style)] * (float2(size, inst.thickness)/2.0);
 
     // Construct a plane facing the camera
+    float3 to_camera = uniform.camera_position - origin;
     float3 u = normalize(inst.start - origin);
     float3 v = normalize(cross(u, to_camera));
-    float3 pos = (u * vert_position.x * (size/2.0)) + (v * vert_position.y * (inst.thickness / 2.0));
+    float3 pos = (u * vert.x) + (v * vert.y);
 
     VertexOut out;
     out.position = uniform.camera * float4(origin + pos, 1.0);
