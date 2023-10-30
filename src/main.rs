@@ -48,14 +48,69 @@ fn surface() -> impl Surface {
     })
 }
 
+fn cardinal_widgets() -> Vec<Widget> {
+    let magnitude = 25.0;
+    let origin = vector![0.0, 0.05, 0.0];
+
+    vec![
+        Widget::Arrow {
+            direction: vector![1.0, 0.0, 0.0],
+            color: vector![1.0, 0.0, 0.0],
+            origin,
+            magnitude,
+        },
+        Widget::Arrow {
+            direction: vector![0.0, 1.0, 0.0],
+            color: vector![0.0, 1.0, 0.0],
+            origin,
+            magnitude,
+        },
+        Widget::Arrow {
+            direction: vector![0.0, 0.0, 1.0],
+            color: vector![0.0, 0.0, 1.0],
+            origin,
+            magnitude,
+        },
+    ]
+}
+
+fn grid_widgets() -> Vec<Widget> {
+    let grid_size = 100.0f32;
+    let grid_step = 5.0f32;
+
+    let mut grid_widgets = vec![];
+    grid_widgets.reserve(((grid_size / grid_step) * 2.0) as usize);
+
+    let start = -(grid_size / 2.0);
+
+    let mut grid_line_position = start;
+    while grid_line_position <= -start {
+        grid_widgets.push(Widget::Line {
+            start: vector![grid_line_position, 0.0, -start],
+            end: vector![grid_line_position, 0.0, start],
+            color: vector![0.0, 0.0, 0.0],
+        });
+        grid_widgets.push(Widget::Line {
+            start: vector![-start, 0.0, grid_line_position],
+            end: vector![start, 0.0, grid_line_position],
+            color: vector![0.0, 0.0, 0.0],
+        });
+
+        grid_line_position += grid_step
+    }
+
+    grid_widgets
+}
+
 struct App<S> {
     window: Window,
 
     renderer: Renderer,
-    // surface: S,
-    t: f32,
+
     desired_radius: f32,
     particle_system: RelaxationSystem<S>,
+
+    widgets: Vec<Widget>,
 }
 
 impl<S: Surface> App<S> {
@@ -76,13 +131,15 @@ impl<S: Surface> App<S> {
         let points = sample(&surface, surface.sample_point(), sample_radius);
         let particle_system = RelaxationSystem::new(points, sample_radius, surface);
 
+        let mut widgets = grid_widgets();
+        widgets.append(cardinal_widgets().as_mut());
+
         App {
             window,
             renderer,
-            t: 0.0,
             desired_radius: 0.4,
             particle_system,
-            // surface,
+            widgets,
         }
     }
 
@@ -113,46 +170,10 @@ impl<S: Surface> App<S> {
             })
             .collect();
 
-        let mut widgets = self.grid_widgets();
-        widgets.push(Widget::Circle {
-            origin: vector![0.0, 0.0, 0.0],
-            normal: vector![0.0, 1.0, 0.0],
-            color: vector![1.0, 0.0, 0.0],
-            radius: 30.0,
-        });
-
-        self.renderer.draw(&particles, &widgets);
+        self.renderer.draw(&particles, &self.widgets);
         let r_duration = start.elapsed();
 
         dbg!(p_duration, r_duration);
-    }
-
-    fn grid_widgets(&self) -> Vec<Widget> {
-        let grid_size = 100.0f32;
-        let grid_step = 5.0f32;
-
-        let mut grid_widgets = vec![];
-        grid_widgets.reserve(((grid_size / grid_step) * 2.0) as usize);
-
-        let start = -(grid_size / 2.0);
-
-        let mut grid_line_position = start;
-        while grid_line_position <= -start {
-            grid_widgets.push(Widget::Line {
-                start: vector![grid_line_position, 0.0, -start],
-                end: vector![grid_line_position, 0.0, start],
-                color: vector![0.0, 0.0, 0.0],
-            });
-            grid_widgets.push(Widget::Line {
-                start: vector![-start, 0.0, grid_line_position],
-                end: vector![start, 0.0, grid_line_position],
-                color: vector![0.0, 0.0, 0.0],
-            });
-
-            grid_line_position += grid_step
-        }
-
-        grid_widgets
     }
 }
 

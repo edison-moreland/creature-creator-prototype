@@ -6,10 +6,11 @@ use metal::{
     MTLVertexStepFunction, NSUInteger, RenderCommandEncoderRef, RenderPipelineDescriptor,
     RenderPipelineState, VertexAttributeDescriptor, VertexBufferLayoutDescriptor, VertexDescriptor,
 };
-use nalgebra::{point, Vector3};
+use nalgebra::Vector3;
 use std::mem::size_of;
 
 const VERTEX_COUNT: usize = 4; // Just a quad
+const STYLE_COUNT: usize = 2;
 const MAX_LINE_SEGMENTS: usize = 1000;
 const WIDGET_SHADER_LIBRARY: &[u8] = include_bytes!("widget_shader.metallib");
 
@@ -22,8 +23,14 @@ pub enum Widget {
     Circle {
         origin: Vector3<f32>,
         normal: Vector3<f32>,
-        color: Vector3<f32>,
         radius: f32,
+        color: Vector3<f32>,
+    },
+    Arrow {
+        origin: Vector3<f32>,
+        direction: Vector3<f32>,
+        magnitude: f32,
+        color: Vector3<f32>,
     },
 }
 
@@ -40,12 +47,13 @@ struct LineSegment {
     end: [f32; 3],
     color: [f32; 3],
     thickness: f32,
+    style: u32,
 }
 
 pub struct WidgetPipeline {
     pipeline: RenderPipelineState,
 
-    vertices: Shared<[Vertex; VERTEX_COUNT]>,
+    vertices: Shared<[Vertex; VERTEX_COUNT * STYLE_COUNT]>,
 
     segment_count: usize,
     segments: Shared<[LineSegment; MAX_LINE_SEGMENTS]>,
@@ -86,21 +94,13 @@ impl WidgetPipeline {
         let vertex_descriptor = VertexDescriptor::new();
 
         // Vertex attributes
-        let position_attribute = VertexAttributeDescriptor::new();
-        position_attribute.set_format(MTLVertexFormat::Float2);
-        position_attribute.set_buffer_index(0);
-        position_attribute.set_offset(0);
-        vertex_descriptor
-            .attributes()
-            .set_object_at(0, Some(&position_attribute));
-
         let start_attribute = VertexAttributeDescriptor::new();
         start_attribute.set_format(MTLVertexFormat::Float3);
         start_attribute.set_buffer_index(1);
         start_attribute.set_offset(0);
         vertex_descriptor
             .attributes()
-            .set_object_at(1, Some(&start_attribute));
+            .set_object_at(0, Some(&start_attribute));
 
         let end_attribute = VertexAttributeDescriptor::new();
         end_attribute.set_format(MTLVertexFormat::Float3);
@@ -108,7 +108,7 @@ impl WidgetPipeline {
         end_attribute.set_offset(size_of::<[f32; 3]>() as NSUInteger);
         vertex_descriptor
             .attributes()
-            .set_object_at(2, Some(&end_attribute));
+            .set_object_at(1, Some(&end_attribute));
 
         let color_attribute = VertexAttributeDescriptor::new();
         color_attribute.set_format(MTLVertexFormat::Float3);
@@ -116,7 +116,7 @@ impl WidgetPipeline {
         color_attribute.set_offset(size_of::<[f32; 6]>() as NSUInteger);
         vertex_descriptor
             .attributes()
-            .set_object_at(3, Some(&color_attribute));
+            .set_object_at(2, Some(&color_attribute));
 
         let thickness_attribute = VertexAttributeDescriptor::new();
         thickness_attribute.set_format(MTLVertexFormat::Float);
@@ -124,17 +124,17 @@ impl WidgetPipeline {
         thickness_attribute.set_offset((size_of::<[f32; 9]>()) as NSUInteger);
         vertex_descriptor
             .attributes()
-            .set_object_at(4, Some(&thickness_attribute));
+            .set_object_at(3, Some(&thickness_attribute));
+
+        let style_attribute = VertexAttributeDescriptor::new();
+        style_attribute.set_format(MTLVertexFormat::UInt);
+        style_attribute.set_buffer_index(1);
+        style_attribute.set_offset((size_of::<[f32; 10]>()) as NSUInteger);
+        vertex_descriptor
+            .attributes()
+            .set_object_at(4, Some(&style_attribute));
 
         // Buffer layouts
-        let vertex_buffer = VertexBufferLayoutDescriptor::new();
-        vertex_buffer.set_stride((size_of::<Vertex>()) as NSUInteger);
-        vertex_buffer.set_step_function(MTLVertexStepFunction::PerVertex);
-        vertex_buffer.set_step_rate(1);
-        vertex_descriptor
-            .layouts()
-            .set_object_at(0, Some(&vertex_buffer));
-
         let instance_buffer = VertexBufferLayoutDescriptor::new();
         instance_buffer.set_stride(size_of::<LineSegment>() as NSUInteger);
         instance_buffer.set_step_function(MTLVertexStepFunction::PerInstance);
@@ -150,8 +150,9 @@ impl WidgetPipeline {
             .unwrap()
     }
 
-    fn new_vertex_buffer(device: &DeviceRef) -> Shared<[Vertex; VERTEX_COUNT]> {
+    fn new_vertex_buffer(device: &DeviceRef) -> Shared<[Vertex; VERTEX_COUNT * STYLE_COUNT]> {
         let vertices = [
+            // Regular line style
             Vertex {
                 position: [-1.0, -1.0],
             },
@@ -160,6 +161,19 @@ impl WidgetPipeline {
             },
             Vertex {
                 position: [1.0, -1.0],
+            },
+            Vertex {
+                position: [1.0, 1.0],
+            },
+            // Arrow style
+            Vertex {
+                position: [1.0, -1.0],
+            },
+            Vertex {
+                position: [1.0, 0.0],
+            },
+            Vertex {
+                position: [-1.0, 0.0],
             },
             Vertex {
                 position: [1.0, 1.0],
@@ -177,6 +191,7 @@ impl WidgetPipeline {
                 end: [0.0, 0.0, 0.0],
                 color: [0.0, 0.0, 0.0],
                 thickness: 0.0,
+                style: 0,
             }; MAX_LINE_SEGMENTS],
         )
     }
@@ -192,12 +207,19 @@ impl WidgetPipeline {
 }
 // Drawing
 impl WidgetPipeline {
-    fn segment(a: Vector3<f32>, b: Vector3<f32>, color: Vector3<f32>) -> LineSegment {
+    fn segment(
+        a: Vector3<f32>,
+        b: Vector3<f32>,
+        color: Vector3<f32>,
+        thickness: f32,
+        style: u32,
+    ) -> LineSegment {
         LineSegment {
             start: a.data.0[0],
             end: b.data.0[0],
             color: color.data.0[0],
-            thickness: 0.1,
+            thickness,
+            style,
         }
     }
 
@@ -206,7 +228,7 @@ impl WidgetPipeline {
         for widget in widgets {
             match widget {
                 &Widget::Line { start, end, color } => {
-                    self.segments[segment_count] = Self::segment(start, end, color);
+                    self.segments[segment_count] = Self::segment(start, end, color, 0.1, 0);
                     segment_count += 1;
                 }
                 &Widget::Circle {
@@ -223,7 +245,37 @@ impl WidgetPipeline {
                         let last_i = if i == 0 { segments - 1 } else { i - 1 };
 
                         self.segments[segment_count] =
-                            Self::segment(points[last_i], points[i], color);
+                            Self::segment(points[last_i], points[i], color, 0.1, 0);
+                        segment_count += 1;
+                    }
+                }
+                &Widget::Arrow {
+                    origin,
+                    direction,
+                    magnitude,
+                    color,
+                } => {
+                    let start = origin;
+                    let end = start + (direction * magnitude);
+
+                    let stem_thickness = 0.2;
+                    let arrow_thickness = stem_thickness * 4.0;
+                    let arrow_head_length = arrow_thickness * 1.5;
+
+                    if magnitude <= arrow_head_length {
+                        self.segments[segment_count] =
+                            Self::segment(start, end, color, arrow_thickness, 1);
+                        segment_count += 1;
+                    } else {
+                        let stem_length = magnitude - arrow_head_length;
+                        let stem_end = start + (direction * stem_length);
+
+                        self.segments[segment_count] =
+                            Self::segment(start, stem_end, color, stem_thickness, 0);
+                        segment_count += 1;
+
+                        self.segments[segment_count] =
+                            Self::segment(stem_end, end, color, arrow_thickness, 1);
                         segment_count += 1;
                     }
                 }
