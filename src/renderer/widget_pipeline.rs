@@ -47,6 +47,7 @@ struct LineSegment {
     end: [f32; 3],
     color: [f32; 3],
     thickness: f32,
+    segment_size: f32, // 0 means no segments
     style: u32,
 }
 
@@ -126,13 +127,21 @@ impl WidgetPipeline {
             .attributes()
             .set_object_at(3, Some(&thickness_attribute));
 
+        let segment_size_attribute = VertexAttributeDescriptor::new();
+        segment_size_attribute.set_format(MTLVertexFormat::Float);
+        segment_size_attribute.set_buffer_index(1);
+        segment_size_attribute.set_offset((size_of::<[f32; 10]>()) as NSUInteger);
+        vertex_descriptor
+            .attributes()
+            .set_object_at(4, Some(&segment_size_attribute));
+
         let style_attribute = VertexAttributeDescriptor::new();
         style_attribute.set_format(MTLVertexFormat::UInt);
         style_attribute.set_buffer_index(1);
-        style_attribute.set_offset((size_of::<[f32; 10]>()) as NSUInteger);
+        style_attribute.set_offset((size_of::<[f32; 11]>()) as NSUInteger);
         vertex_descriptor
             .attributes()
-            .set_object_at(4, Some(&style_attribute));
+            .set_object_at(5, Some(&style_attribute));
 
         // Buffer layouts
         let instance_buffer = VertexBufferLayoutDescriptor::new();
@@ -191,6 +200,7 @@ impl WidgetPipeline {
                 end: [0.0, 0.0, 0.0],
                 color: [0.0, 0.0, 0.0],
                 thickness: 0.0,
+                segment_size: 0.0,
                 style: 0,
             }; MAX_LINE_SEGMENTS],
         )
@@ -212,6 +222,7 @@ impl WidgetPipeline {
         b: Vector3<f32>,
         color: Vector3<f32>,
         thickness: f32,
+        segment_size: f32,
         style: u32,
     ) -> LineSegment {
         LineSegment {
@@ -219,6 +230,7 @@ impl WidgetPipeline {
             end: b.data.0[0],
             color: color.data.0[0],
             thickness,
+            segment_size,
             style,
         }
     }
@@ -228,7 +240,7 @@ impl WidgetPipeline {
         for widget in widgets {
             match *widget {
                 Widget::Line { start, end, color } => {
-                    self.segments[segment_count] = Self::segment(start, end, color, 0.1, 0);
+                    self.segments[segment_count] = Self::segment(start, end, color, 0.1, 0.0, 0);
                     segment_count += 1;
                 }
                 Widget::Circle {
@@ -245,7 +257,7 @@ impl WidgetPipeline {
                         let last_i = if i == 0 { segments - 1 } else { i - 1 };
 
                         self.segments[segment_count] =
-                            Self::segment(points[last_i], points[i], color, 0.1, 0);
+                            Self::segment(points[last_i], points[i], color, 0.1, 0.0, 0);
                         segment_count += 1;
                     }
                 }
@@ -264,18 +276,18 @@ impl WidgetPipeline {
 
                     if magnitude <= arrow_head_length {
                         self.segments[segment_count] =
-                            Self::segment(start, end, color, arrow_thickness, 1);
+                            Self::segment(start, end, color, arrow_thickness, 0.0, 1);
                         segment_count += 1;
                     } else {
                         let stem_length = magnitude - arrow_head_length;
                         let stem_end = start + (direction * stem_length);
 
                         self.segments[segment_count] =
-                            Self::segment(start, stem_end, color, stem_thickness, 0);
+                            Self::segment(start, stem_end, color, stem_thickness, 0.0, 0);
                         segment_count += 1;
 
                         self.segments[segment_count] =
-                            Self::segment(stem_end, end, color, arrow_thickness, 1);
+                            Self::segment(stem_end, end, color, arrow_thickness, 0.0, 1);
                         segment_count += 1;
                     }
                 }

@@ -3,11 +3,12 @@ using namespace metal;
 
 // TODO: Could we make some macros to auto generate the vertex_descriptor from this struct?
 struct Instance {
-    float3 start     [[attribute(0)]];
-    float3 end       [[attribute(1)]];
-    float3 color     [[attribute(2)]];
-    float  thickness [[attribute(3)]];
-    uint   style     [[attribute(4)]];
+    float3 start        [[attribute(0)]];
+    float3 end          [[attribute(1)]];
+    float3 color        [[attribute(2)]];
+    float  thickness    [[attribute(3)]];
+    float  segment_size [[attribute(4)]];
+    uint   style        [[attribute(5)]];
 };
 
 struct VertexOut {
@@ -46,7 +47,7 @@ vertex VertexOut vertex_main(Instance inst [[stage_in]],
     out.position = uniform.camera * float4(origin + pos, 1.0);
     out.color = float4(inst.color, 1.0);
     out.t = t;
-    out.segment_size = 1.0;
+    out.segment_size = inst.segment_size;
     return out;
 }
 
@@ -54,8 +55,6 @@ fragment float4 fragment_main(VertexOut inst [[stage_in]]) {
     if (inst.segment_size == 0.0) {
         return inst.color;
     }
-
-//    \frac{\sin\left(x\pi\left(s2-1\right)\right)}{2}+0.5
 
     float y = (sin( (inst.t * M_PI_F) / inst.segment_size)/2.0) + 0.5;
 
