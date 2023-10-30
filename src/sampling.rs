@@ -1,8 +1,8 @@
 use std::f64::consts::PI;
 
-use crate::plane::Plane;
 use nalgebra::{vector, Vector3};
 
+use crate::plane::Plane;
 use crate::spatial_indexer::kd_indexer::KdContainer;
 use crate::surfaces::{gradient, on_surface, Surface};
 

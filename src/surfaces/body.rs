@@ -47,8 +47,9 @@ impl Core {
 
 #[cfg(test)]
 mod test {
-    use crate::surfaces::body::Core;
     use nalgebra::vector;
+
+    use crate::surfaces::body::Core;
 
     #[test]
     fn are_coplanar() {

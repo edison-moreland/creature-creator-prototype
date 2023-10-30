@@ -12,7 +12,8 @@ use winit::{
 };
 
 use crate::relaxation::RelaxationSystem;
-use crate::renderer::{Camera, Renderer, Sphere, Widget};
+use crate::renderer::widgets::{CardinalArrows, Grid};
+use crate::renderer::{Camera, Renderer, Sphere};
 use crate::sampling::sample;
 use crate::surfaces::limb::Limb;
 use crate::surfaces::Surface;
@@ -58,60 +59,6 @@ fn surface() -> impl Surface {
     // })
 }
 
-fn cardinal_widgets() -> Vec<Widget> {
-    let magnitude = 25.0;
-    let origin = vector![0.0, 0.05, 0.0];
-
-    vec![
-        Widget::Arrow {
-            direction: vector![1.0, 0.0, 0.0],
-            color: vector![1.0, 0.0, 0.0],
-            origin,
-            magnitude,
-        },
-        Widget::Arrow {
-            direction: vector![0.0, 1.0, 0.0],
-            color: vector![0.0, 1.0, 0.0],
-            origin,
-            magnitude,
-        },
-        Widget::Arrow {
-            direction: vector![0.0, 0.0, 1.0],
-            color: vector![0.0, 0.0, 1.0],
-            origin,
-            magnitude,
-        },
-    ]
-}
-
-fn grid_widgets() -> Vec<Widget> {
-    let grid_size = 100.0f32;
-    let grid_step = 5.0f32;
-
-    let mut grid_widgets = vec![];
-    grid_widgets.reserve(((grid_size / grid_step) * 2.0) as usize);
-
-    let start = -(grid_size / 2.0);
-
-    let mut grid_line_position = start;
-    while grid_line_position <= -start {
-        grid_widgets.push(Widget::Line {
-            start: vector![grid_line_position, 0.0, -start],
-            end: vector![grid_line_position, 0.0, start],
-            color: vector![0.0, 0.0, 0.0],
-        });
-        grid_widgets.push(Widget::Line {
-            start: vector![-start, 0.0, grid_line_position],
-            end: vector![start, 0.0, grid_line_position],
-            color: vector![0.0, 0.0, 0.0],
-        });
-
-        grid_line_position += grid_step
-    }
-
-    grid_widgets
-}
-
 struct App<S> {
     #[allow(dead_code)] // Window is never used after initialization but it can't be dropped
     window: Window,
@@ -121,7 +68,8 @@ struct App<S> {
     desired_radius: f32,
     particle_system: RelaxationSystem<S>,
 
-    widgets: Vec<Widget>,
+    grid: Grid,
+    arrows: CardinalArrows,
 }
 
 impl<S: Surface> App<S> {
@@ -145,21 +93,16 @@ impl<S: Surface> App<S> {
         println!("Done! Initializing particle system...");
         let particle_system = RelaxationSystem::new(points, sample_radius, surface);
 
-        let mut widgets = grid_widgets();
-        // widgets.append(cardinal_widgets().as_mut());
-        // widgets.push(Widget::Circle {
-        //     origin: vector![0.0, 0.0, 0.0],
-        //     normal: vector![0.0, 1.0, 0.0],
-        //     radius: 30.0,
-        //     color: vector![0.8, 0.0, 0.5],
-        // });
+        let grid = Grid::new(100.0, 5.0);
+        let arrows = CardinalArrows::new(vector![0.0, 0.05, 0.0], 25.0);
 
         App {
             window,
             renderer,
             desired_radius: 0.4,
             particle_system,
-            widgets,
+            grid,
+            arrows,
         }
     }
 
@@ -177,26 +120,25 @@ impl<S: Surface> App<S> {
         let p_duration = start.elapsed();
 
         let start = Instant::now();
-        let particles: Vec<Sphere> = self
-            .particle_system
-            .positions()
-            .map(|(point, normal, radius)| Sphere {
-                center: point.data.0[0],
-                normal: normal.data.0[0],
-                radius,
-            })
-            .collect();
 
         // TODO: Particle system shouldn't own the surface
+        self.renderer.draw_spheres(
+            self.particle_system
+                .positions()
+                .map(|(point, normal, radius)| Sphere {
+                    center: point.data.0[0],
+                    normal: normal.data.0[0],
+                    radius,
+                })
+                .collect::<Vec<Sphere>>()
+                .as_slice(),
+        );
 
-        let surface_widgets_start = self.widgets.len();
-        let mut surface_widgets = self.particle_system.surface.debug_widgets();
-        self.widgets.append(&mut surface_widgets);
+        self.renderer.draw_widget(&self.grid);
+        self.renderer.draw_widget(&self.arrows);
+        self.renderer.commit();
 
-        self.renderer.draw(&particles, &self.widgets);
         let r_duration = start.elapsed();
-
-        self.widgets.drain(surface_widgets_start..);
 
         dbg!(p_duration, r_duration);
     }

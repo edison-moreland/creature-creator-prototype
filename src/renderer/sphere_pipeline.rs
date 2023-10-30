@@ -6,6 +6,7 @@ use metal::{
     MTLVertexStepFunction, NSUInteger, RenderCommandEncoderRef, RenderPipelineDescriptor,
     RenderPipelineState, VertexAttributeDescriptor, VertexBufferLayoutDescriptor, VertexDescriptor,
 };
+use nalgebra::Vector3;
 
 use crate::renderer::shared::Shared;
 use crate::renderer::uniforms::Uniforms;
@@ -29,6 +30,17 @@ pub struct Sphere {
     pub radius: f32,
     pub normal: [f32; 3],
 }
+
+impl Sphere {
+    pub fn new(center: Vector3<f32>, normal: Vector3<f32>, radius: f32) -> Self {
+        Self {
+            center: center.data.0[0],
+            radius,
+            normal: normal.data.0[0],
+        }
+    }
+}
+
 pub struct SpherePipeline {
     pipeline: RenderPipelineState,
 
@@ -192,7 +204,7 @@ impl SpherePipeline {
 
 // Drawing
 impl SpherePipeline {
-    pub fn update_instance_buffer(&mut self, spheres: &[Sphere]) {
+    pub fn draw_spheres(&mut self, spheres: &[Sphere]) {
         let instance_count = spheres.len();
         if instance_count > MAX_INSTANCE_COUNT {
             panic!("HEY THAT:S TOO BIG!!! HEY !!")
@@ -202,7 +214,11 @@ impl SpherePipeline {
         self.instances[0..instance_count].copy_from_slice(spheres);
     }
 
-    pub fn draw_spheres<'a>(
+    pub fn reset(&mut self) {
+        self.instance_count = 0; // Mostly here for consistency
+    }
+
+    pub fn encode_commands<'a>(
         &'a self,
         depth_stencil: &'a DepthStencilStateRef,
         uniforms: &'a Shared<Uniforms>,

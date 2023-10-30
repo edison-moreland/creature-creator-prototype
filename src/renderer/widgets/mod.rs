@@ -1,96 +1,96 @@
-use nalgebra::Vector3;
+use nalgebra::{vector, Vector3};
 
-use crate::plane::Plane;
-use crate::renderer::widgets::pipeline::LineSegment;
+use crate::renderer::widgets::strokes::{Stroke, StrokeSet, Style};
 
 pub mod pipeline;
+pub mod strokes;
 
-pub enum Widget {
-    Line {
-        start: Vector3<f32>,
-        end: Vector3<f32>,
-        color: Vector3<f32>,
-    },
-    Circle {
-        origin: Vector3<f32>,
-        normal: Vector3<f32>,
-        radius: f32,
-        color: Vector3<f32>,
-    },
-    Arrow {
-        origin: Vector3<f32>,
-        direction: Vector3<f32>,
-        magnitude: f32,
-        color: Vector3<f32>,
-    },
+pub trait Widget {
+    fn strokes(&self) -> &StrokeSet;
 }
 
-impl Widget {
-    fn segments(&self, segments: &mut Vec<LineSegment>) {
-        match *self {
-            Widget::Line { start, end, color } => {
-                segments.push(LineSegment::new(start, end, color, 0.1, 0.0, 0));
-            }
-            Widget::Circle {
-                origin,
-                color,
-                normal,
-                radius,
-            } => {
-                let segment_count = 24;
-                let points =
-                    Plane::from_origin_normal(origin, normal).circle_points(segment_count, radius);
+pub struct Grid(StrokeSet);
 
-                for i in 0..segment_count {
-                    let last_i = if i == 0 { segment_count - 1 } else { i - 1 };
+impl Grid {
+    pub fn new(size: f32, step: f32) -> Self {
+        let mut stroke_set = StrokeSet::new();
+        stroke_set.set_palette(vec![Style::new(vector![0.0, 0.0, 0.0], 0.1, 0.0)]);
 
-                    segments.push(LineSegment::new(
-                        points[last_i],
-                        points[i],
-                        color,
-                        0.1,
-                        0.0,
-                        0,
-                    ));
-                }
-            }
-            Widget::Arrow {
-                origin,
-                direction,
-                magnitude,
-                color,
-            } => {
-                let start = origin;
-                let end = start + (direction * magnitude);
+        let start = -(size / 2.0);
 
-                let stem_thickness = 0.2;
-                let arrow_thickness = stem_thickness * 4.0;
-                let arrow_head_length = arrow_thickness * 1.5;
-
-                if magnitude <= arrow_head_length {
-                    segments.push(LineSegment::new(start, end, color, arrow_thickness, 0.0, 1));
-                } else {
-                    let stem_length = magnitude - arrow_head_length;
-                    let stem_end = start + (direction * stem_length);
-
-                    segments.push(LineSegment::new(
-                        start,
-                        stem_end,
-                        color,
-                        stem_thickness,
-                        0.0,
-                        0,
-                    ));
-                    segments.push(LineSegment::new(
-                        stem_end,
-                        end,
-                        color,
-                        arrow_thickness,
-                        0.0,
-                        1,
-                    ));
-                }
-            }
+        let mut grid_line_position = start;
+        while grid_line_position <= -start {
+            stroke_set.stroke(
+                0,
+                Stroke::Line {
+                    start: vector![grid_line_position, 0.0, -start],
+                    end: vector![grid_line_position, 0.0, start],
+                },
+            );
+            stroke_set.stroke(
+                0,
+                Stroke::Line {
+                    start: vector![-start, 0.0, grid_line_position],
+                    end: vector![start, 0.0, grid_line_position],
+                },
+            );
+            grid_line_position += step
         }
+
+        Self(stroke_set)
+    }
+}
+
+impl Widget for Grid {
+    fn strokes(&self) -> &StrokeSet {
+        &self.0
+    }
+}
+
+pub struct CardinalArrows(StrokeSet);
+
+impl CardinalArrows {
+    pub fn new(origin: Vector3<f32>, magnitude: f32) -> Self {
+        let mut stroke_set = StrokeSet::new();
+        stroke_set.set_palette(vec![
+            Style::new(vector![1.0, 0.0, 0.0], 0.2, 0.0),
+            Style::new(vector![0.0, 1.0, 0.0], 0.2, 0.0),
+            Style::new(vector![0.0, 0.0, 1.0], 0.2, 0.0),
+        ]);
+
+        stroke_set.stroke(
+            0,
+            Stroke::Arrow {
+                direction: vector![1.0, 0.0, 0.0],
+                origin,
+                magnitude,
+            },
+        );
+
+        stroke_set.stroke(
+            1,
+            Stroke::Arrow {
+                direction: vector![0.0, 1.0, 0.0],
+                origin,
+                magnitude,
+            },
+        );
+
+        stroke_set.stroke(
+            2,
+            Stroke::Arrow {
+                direction: vector![0.0, 0.0, 1.0],
+                origin,
+                magnitude,
+            },
+        );
+
+        Self(stroke_set)
+    }
+}
+
+impl Widget for CardinalArrows {
+    fn strokes(&self) -> &StrokeSet {
+        &self.0
     }
 }

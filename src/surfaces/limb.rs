@@ -1,5 +1,4 @@
 use nalgebra::{point, vector, Matrix4, Point3, Rotation3, Scale3, Translation3, Vector3};
-use crate::renderer::Widget;
 
 use crate::surfaces::primitives::{ellipsoid, translate};
 use crate::surfaces::{gradient, on_surface, Surface};
@@ -10,7 +9,8 @@ use crate::surfaces::{gradient, on_surface, Surface};
 pub struct Limb {
     a: Vector3<f32>,
     b: Vector3<f32>,
-    surfaces: Vec<(Vector3<f32>, Vector3<f32>)>, // (position, ellipsoid params)
+    surfaces: Vec<(Vector3<f32>, Vector3<f32>)>,
+    // (position, ellipsoid params)
     to: Matrix4<f32>,
 }
 
@@ -77,13 +77,13 @@ impl Surface for Limb {
         point
     }
 
-    fn debug_widgets(&self) -> Vec<Widget> {
-        vec![
-            Widget::Line {
-                start: self.a,
-                end: self.b,
-                color: Default::default(),
-            }
-        ]
-    }
+    // fn debug_widgets(&self) -> Vec<Widget> {
+    //     vec![
+    //         Widget::Line {
+    //             start: self.a,
+    //             end: self.b,
+    //             color: Default::default(),
+    //         }
+    //     ]
+    // }
 }

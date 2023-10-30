@@ -9,7 +9,8 @@ pub trait BufferAllocator<const SIZE: usize> {
 
 // uses a simple stack based method for tracking free indices
 pub struct StackBufferAllocator<const SIZE: usize> {
-    buffer_head: usize, // The highest index given out
+    buffer_head: usize,
+    // The highest index given out
     returned_indices: Vec<usize>,
 }
 

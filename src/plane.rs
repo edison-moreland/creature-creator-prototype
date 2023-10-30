@@ -1,5 +1,6 @@
-use nalgebra::{vector, Vector2, Vector3};
 use std::f32::consts::PI;
+
+use nalgebra::{vector, Vector2, Vector3};
 
 pub struct Plane {
     o: Vector3<f32>,

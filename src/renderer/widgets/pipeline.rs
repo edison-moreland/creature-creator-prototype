@@ -1,16 +1,18 @@
-use crate::plane::Plane;
-use crate::renderer::shared::Shared;
-use crate::renderer::uniforms::Uniforms;
-use crate::renderer::Widget;
+use std::mem::size_of;
+
 use metal::{
     DepthStencilStateRef, DeviceRef, MTLPixelFormat, MTLPrimitiveType, MTLVertexFormat,
     MTLVertexStepFunction, NSUInteger, RenderCommandEncoderRef, RenderPipelineDescriptor,
     RenderPipelineState, VertexAttributeDescriptor, VertexBufferLayoutDescriptor, VertexDescriptor,
 };
 use nalgebra::Vector3;
-use std::mem::size_of;
 
-const VERTEX_COUNT: usize = 4; // Just a quad
+use crate::renderer::shared::Shared;
+use crate::renderer::uniforms::Uniforms;
+use crate::renderer::Widget;
+
+const VERTEX_COUNT: usize = 4;
+// Just a quad
 const STYLE_COUNT: usize = 2;
 const MAX_LINE_SEGMENTS: usize = 1000;
 const WIDGET_SHADER_LIBRARY: &[u8] = include_bytes!("widget_shader.metallib");
@@ -28,7 +30,8 @@ pub struct LineSegment {
     end: [f32; 3],
     color: [f32; 3],
     thickness: f32,
-    segment_size: f32, // 0 means no segments
+    segment_size: f32,
+    // 0 means no segments
     style: u32,
 }
 
@@ -216,40 +219,24 @@ impl WidgetPipeline {
         }
     }
 }
+
 // Drawing
 impl WidgetPipeline {
-    fn segment(
-        a: Vector3<f32>,
-        b: Vector3<f32>,
-        color: Vector3<f32>,
-        thickness: f32,
-        segment_size: f32,
-        style: u32,
-    ) -> LineSegment {
-        LineSegment {
-            start: a.data.0[0],
-            end: b.data.0[0],
-            color: color.data.0[0],
-            thickness,
-            segment_size,
-            style,
-        }
-    }
-
-    pub fn update_widgets(&mut self, widgets: &[Widget]) {
+    pub fn draw_widget(&mut self, widget: &dyn Widget) {
         let mut segments = vec![];
-
-        for w in widgets {
-            w.segments(&mut segments)
-        }
-
+        widget.strokes().line_segments(&mut segments);
         let segment_count = segments.len();
 
-        self.segment_count = segment_count;
-        self.segments[0..segment_count].copy_from_slice(&segments)
+        self.segments[self.segment_count..self.segment_count + segment_count]
+            .copy_from_slice(&segments);
+        self.segment_count += segment_count;
     }
 
-    pub fn draw_widgets<'a>(
+    pub fn reset(&mut self) {
+        self.segment_count = 0;
+    }
+
+    pub fn encode_commands<'a>(
         &'a self,
         depth_stencil: &'a DepthStencilStateRef,
         uniforms: &'a Shared<Uniforms>,

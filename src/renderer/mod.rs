@@ -8,23 +8,23 @@ use metal::{
     MTLTextureUsage, MetalDrawableRef, MetalLayer, RenderCommandEncoderRef, Texture,
     TextureDescriptor,
 };
-use uniforms::Uniforms;
 use winit::dpi::PhysicalSize;
 use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
 use winit::window::Window;
 
-use crate::renderer::shared::Shared;
-use crate::renderer::sphere_pipeline::SpherePipeline;
+use uniforms::Uniforms;
 
+use crate::renderer::shared::Shared;
 pub use crate::renderer::sphere_pipeline::Sphere;
+use crate::renderer::sphere_pipeline::SpherePipeline;
 pub use crate::renderer::uniforms::Camera;
 use crate::renderer::widgets::pipeline::WidgetPipeline;
-pub use crate::renderer::widgets::Widget;
+use crate::renderer::widgets::Widget;
 
 mod shared;
 mod sphere_pipeline;
 mod uniforms;
-mod widgets;
+pub mod widgets;
 
 fn create_metal_layer(device: &DeviceRef, window: &Window) -> MetalLayer {
     let layer = MetalLayer::new();
@@ -133,21 +133,29 @@ impl Renderer {
         self.layer.set_contents_scale(scale_factor);
     }
 
-    pub fn draw(&mut self, instances: &[Sphere], widgets: &[Widget]) {
+    pub fn draw_spheres(&mut self, spheres: &[Sphere]) {
+        self.sphere_pipeline.draw_spheres(spheres);
+    }
+
+    pub fn draw_widget(&mut self, widget: &dyn Widget) {
+        self.widget_pipeline.draw_widget(widget);
+    }
+
+    pub fn commit(&mut self) {
         let drawable = match self.layer.next_drawable() {
             Some(drawable) => drawable,
             None => return,
         };
 
-        self.sphere_pipeline.update_instance_buffer(instances);
-        self.widget_pipeline.update_widgets(widgets);
-
         self.render_pass(drawable, |encoder| {
             self.sphere_pipeline
-                .draw_spheres(&self.depth_state, &self.uniforms)(encoder);
+                .encode_commands(&self.depth_state, &self.uniforms)(encoder);
             self.widget_pipeline
-                .draw_widgets(&self.depth_state, &self.uniforms)(encoder);
-        })
+                .encode_commands(&self.depth_state, &self.uniforms)(encoder);
+        });
+
+        self.sphere_pipeline.reset();
+        self.widget_pipeline.reset();
     }
 
     fn render_pass<F>(&self, drawable: &MetalDrawableRef, f: F)

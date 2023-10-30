@@ -1,17 +1,14 @@
+use nalgebra::{vector, Vector3};
+
 pub mod body;
 pub mod limb;
 pub mod primitives;
-
-use crate::renderer::Widget;
-use nalgebra::{vector, Vector3};
 
 pub trait Surface {
     fn at(&self, t: f32, p: Vector3<f32>) -> f32;
 
     // a single point somewhere on the surface at t=0.0
     fn sample_point(&self) -> Vector3<f32>;
-
-    fn debug_widgets(&self) -> Vec<Widget>;
 }
 
 pub struct SurfaceFn<F>(Vector3<f32>, F);
@@ -35,10 +32,6 @@ where
 
     fn sample_point(&self) -> Vector3<f32> {
         self.0
-    }
-
-    fn debug_widgets(&self) -> Vec<Widget> {
-        vec![]
     }
 }
 
