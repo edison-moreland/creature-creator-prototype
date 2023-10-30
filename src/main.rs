@@ -18,6 +18,7 @@ use crate::surfaces::primitives::{ellipsoid, rotate, smooth_union, sphere, trans
 use crate::surfaces::{Surface, SurfaceFn};
 
 mod buffer_allocator;
+mod plane;
 mod relaxation;
 mod renderer;
 mod sampling;
@@ -112,7 +113,13 @@ impl<S: Surface> App<S> {
             })
             .collect();
 
-        let widgets = self.grid_widgets();
+        let mut widgets = self.grid_widgets();
+        widgets.push(Widget::Circle {
+            origin: vector![0.0, 0.0, 0.0],
+            normal: vector![0.0, 1.0, 0.0],
+            color: vector![1.0, 0.0, 0.0],
+            radius: 30.0,
+        });
 
         self.renderer.draw(&particles, &widgets);
         let r_duration = start.elapsed();
@@ -132,14 +139,14 @@ impl<S: Surface> App<S> {
         let mut grid_line_position = start;
         while grid_line_position <= -start {
             grid_widgets.push(Widget::Line {
-                start: [grid_line_position, 0.0, -start],
-                end: [grid_line_position, 0.0, start],
-                color: [0.0, 0.0, 0.0],
+                start: vector![grid_line_position, 0.0, -start],
+                end: vector![grid_line_position, 0.0, start],
+                color: vector![0.0, 0.0, 0.0],
             });
             grid_widgets.push(Widget::Line {
-                start: [-start, 0.0, grid_line_position],
-                end: [start, 0.0, grid_line_position],
-                color: [0.0, 0.0, 0.0],
+                start: vector![-start, 0.0, grid_line_position],
+                end: vector![start, 0.0, grid_line_position],
+                color: vector![0.0, 0.0, 0.0],
             });
 
             grid_line_position += grid_step

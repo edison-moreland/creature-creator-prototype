@@ -1,3 +1,4 @@
+use crate::plane::Plane;
 use crate::renderer::shared::Shared;
 use crate::renderer::uniforms::Uniforms;
 use metal::{
@@ -5,6 +6,7 @@ use metal::{
     MTLVertexStepFunction, NSUInteger, RenderCommandEncoderRef, RenderPipelineDescriptor,
     RenderPipelineState, VertexAttributeDescriptor, VertexBufferLayoutDescriptor, VertexDescriptor,
 };
+use nalgebra::{point, Vector3};
 use std::mem::size_of;
 
 const MAX_LINE_SEGMENTS: usize = 1000;
@@ -12,9 +14,15 @@ const WIDGET_SHADER_LIBRARY: &[u8] = include_bytes!("widget_shader.metallib");
 
 pub enum Widget {
     Line {
-        start: [f32; 3],
-        end: [f32; 3],
-        color: [f32; 3],
+        start: Vector3<f32>,
+        end: Vector3<f32>,
+        color: Vector3<f32>,
+    },
+    Circle {
+        origin: Vector3<f32>,
+        normal: Vector3<f32>,
+        color: Vector3<f32>,
+        radius: f32,
     },
 }
 
@@ -125,16 +133,44 @@ impl WidgetPipeline {
             match widget {
                 &Widget::Line { start, end, color } => {
                     self.vertices[vert_count] = Vertex {
-                        position: start,
-                        color,
+                        position: start.data.0[0],
+                        color: color.data.0[0],
                     };
                     vert_count += 1;
 
                     self.vertices[vert_count] = Vertex {
-                        position: end,
-                        color,
+                        position: end.data.0[0],
+                        color: color.data.0[0],
                     };
                     vert_count += 1;
+                }
+                &Widget::Circle {
+                    origin,
+                    color,
+                    normal,
+                    radius,
+                } => {
+                    let segments = 24;
+                    let points =
+                        Plane::from_origin_normal(origin, normal).circle_points(segments, radius);
+
+                    for i in 0..segments {
+                        let last_i = if i == 0 { segments - 1 } else { i - 1 };
+
+                        let (a, b) = (points[last_i], points[i]);
+
+                        self.vertices[vert_count] = Vertex {
+                            position: a.data.0[0],
+                            color: color.data.0[0],
+                        };
+                        vert_count += 1;
+
+                        self.vertices[vert_count] = Vertex {
+                            position: b.data.0[0],
+                            color: color.data.0[0],
+                        };
+                        vert_count += 1;
+                    }
                 }
             }
         }
