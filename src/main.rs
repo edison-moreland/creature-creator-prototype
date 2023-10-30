@@ -117,7 +117,7 @@ impl<S: Surface> App<S> {
     fn init(event_loop: &EventLoopWindowTarget<()>, surface: S) -> Self {
         let window = WindowBuilder::new()
             .with_title("Creature Creator")
-            .with_inner_size(LogicalSize::new(600, 300))
+            .with_inner_size(LogicalSize::new(800, 600))
             .build(event_loop)
             .unwrap();
 
@@ -133,6 +133,12 @@ impl<S: Surface> App<S> {
 
         let mut widgets = grid_widgets();
         widgets.append(cardinal_widgets().as_mut());
+        widgets.push(Widget::Circle {
+            origin: vector![0.0, 0.0, 0.0],
+            normal: vector![0.0, 1.0, 0.0],
+            radius: 30.0,
+            color: vector![0.8, 0.0, 0.5],
+        });
 
         App {
             window,
@@ -152,9 +158,6 @@ impl<S: Surface> App<S> {
     }
 
     fn draw(&mut self) {
-        // self.t += 0.03;
-        // let surface = surface_at(self.t);
-
         let start = Instant::now();
         self.particle_system.update(self.desired_radius);
         let p_duration = start.elapsed();
