@@ -15,10 +15,11 @@ use winit::window::Window;
 
 use crate::renderer::shared::Shared;
 use crate::renderer::sphere_pipeline::SpherePipeline;
+use crate::renderer::widget_pipeline::WidgetPipeline;
 
 pub use crate::renderer::sphere_pipeline::Sphere;
 pub use crate::renderer::uniforms::Camera;
-use crate::renderer::widget_pipeline::{Vertex, WidgetPipeline};
+pub use crate::renderer::widget_pipeline::Widget;
 
 mod shared;
 mod sphere_pipeline;
@@ -132,27 +133,14 @@ impl Renderer {
         self.layer.set_contents_scale(scale_factor);
     }
 
-    pub fn draw(&mut self, instances: &[Sphere]) {
+    pub fn draw(&mut self, instances: &[Sphere], widgets: &[Widget]) {
         let drawable = match self.layer.next_drawable() {
             Some(drawable) => drawable,
             None => return,
         };
 
         self.sphere_pipeline.update_instance_buffer(instances);
-
-        self.widget_pipeline.update_widgets(
-            vec![
-                Vertex {
-                    position: [-10.0, 0.0, 0.0],
-                    color: [1.0, 0.0, 0.0],
-                },
-                Vertex {
-                    position: [10.0, 0.0, 0.0],
-                    color: [1.0, 0.0, 0.0],
-                },
-            ]
-            .as_slice(),
-        );
+        self.widget_pipeline.update_widgets(widgets);
 
         self.render_pass(drawable, |encoder| {
             self.sphere_pipeline

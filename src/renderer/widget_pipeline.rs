@@ -10,11 +10,19 @@ use std::mem::size_of;
 const MAX_LINE_SEGMENTS: usize = 1000;
 const WIDGET_SHADER_LIBRARY: &[u8] = include_bytes!("widget_shader.metallib");
 
+pub enum Widget {
+    Line {
+        start: [f32; 3],
+        end: [f32; 3],
+        color: [f32; 3],
+    },
+}
+
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub struct Vertex {
-    pub position: [f32; 3],
-    pub color: [f32; 3],
+struct Vertex {
+    position: [f32; 3],
+    color: [f32; 3],
 }
 
 pub struct WidgetPipeline {
@@ -111,16 +119,27 @@ impl WidgetPipeline {
 }
 // Drawing
 impl WidgetPipeline {
-    pub fn update_widgets(&mut self, vertices: &[Vertex]) {
-        // TODO: Support actual primitives
+    pub fn update_widgets(&mut self, widgets: &[Widget]) {
+        let mut vert_count = 0;
+        for widget in widgets {
+            match widget {
+                &Widget::Line { start, end, color } => {
+                    self.vertices[vert_count] = Vertex {
+                        position: start,
+                        color,
+                    };
+                    vert_count += 1;
 
-        let vert_count = vertices.len();
-        if vert_count > MAX_LINE_SEGMENTS {
-            panic!("HEY THAT:S TOO BIG!!! HEY !!")
+                    self.vertices[vert_count] = Vertex {
+                        position: end,
+                        color,
+                    };
+                    vert_count += 1;
+                }
+            }
         }
 
         self.vertex_count = vert_count;
-        self.vertices[0..vert_count].copy_from_slice(vertices);
     }
 
     pub fn draw_widgets<'a>(

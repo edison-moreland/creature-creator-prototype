@@ -12,7 +12,7 @@ use winit::{
 };
 
 use crate::relaxation::RelaxationSystem;
-use crate::renderer::{Camera, Renderer, Sphere};
+use crate::renderer::{Camera, Renderer, Sphere, Widget};
 use crate::sampling::sample;
 use crate::surfaces::primitives::{ellipsoid, rotate, smooth_union, sphere, translate, union};
 use crate::surfaces::{Surface, SurfaceFn};
@@ -102,20 +102,50 @@ impl<S: Surface> App<S> {
         let p_duration = start.elapsed();
 
         let start = Instant::now();
-        self.renderer.draw(
-            self.particle_system
-                .positions()
-                .map(|(point, normal, radius)| Sphere {
-                    center: point.data.0[0],
-                    normal: normal.data.0[0],
-                    radius,
-                })
-                .collect::<Vec<Sphere>>()
-                .as_slice(),
-        );
+        let particles: Vec<Sphere> = self
+            .particle_system
+            .positions()
+            .map(|(point, normal, radius)| Sphere {
+                center: point.data.0[0],
+                normal: normal.data.0[0],
+                radius,
+            })
+            .collect();
+
+        let widgets = self.grid_widgets();
+
+        self.renderer.draw(&particles, &widgets);
         let r_duration = start.elapsed();
 
         dbg!(p_duration, r_duration);
+    }
+
+    fn grid_widgets(&self) -> Vec<Widget> {
+        let grid_size = 100.0f32;
+        let grid_step = 5.0f32;
+
+        let mut grid_widgets = vec![];
+        grid_widgets.reserve(((grid_size / grid_step) * 2.0) as usize);
+
+        let start = -(grid_size / 2.0);
+
+        let mut grid_line_position = start;
+        while grid_line_position <= -start {
+            grid_widgets.push(Widget::Line {
+                start: [grid_line_position, 0.0, -start],
+                end: [grid_line_position, 0.0, start],
+                color: [0.0, 0.0, 0.0],
+            });
+            grid_widgets.push(Widget::Line {
+                start: [-start, 0.0, grid_line_position],
+                end: [start, 0.0, grid_line_position],
+                color: [0.0, 0.0, 0.0],
+            });
+
+            grid_line_position += grid_step
+        }
+
+        grid_widgets
     }
 }
 
