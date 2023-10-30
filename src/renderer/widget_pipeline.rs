@@ -9,6 +9,7 @@ use metal::{
 use nalgebra::{point, Vector3};
 use std::mem::size_of;
 
+const VERTEX_COUNT: usize = 4; // Just a quad
 const MAX_LINE_SEGMENTS: usize = 1000;
 const WIDGET_SHADER_LIBRARY: &[u8] = include_bytes!("widget_shader.metallib");
 
@@ -29,15 +30,25 @@ pub enum Widget {
 #[derive(Copy, Clone)]
 #[repr(C)]
 struct Vertex {
-    position: [f32; 3],
+    position: [f32; 2],
+}
+
+#[derive(Copy, Clone)]
+#[repr(C)]
+struct LineSegment {
+    start: [f32; 3],
+    end: [f32; 3],
     color: [f32; 3],
+    thickness: f32,
 }
 
 pub struct WidgetPipeline {
     pipeline: RenderPipelineState,
 
-    vertex_count: usize,
-    vertices: Shared<[Vertex; MAX_LINE_SEGMENTS]>,
+    vertices: Shared<[Vertex; VERTEX_COUNT]>,
+
+    segment_count: usize,
+    segments: Shared<[LineSegment; MAX_LINE_SEGMENTS]>,
 }
 
 // Initialization
@@ -76,20 +87,44 @@ impl WidgetPipeline {
 
         // Vertex attributes
         let position_attribute = VertexAttributeDescriptor::new();
-        position_attribute.set_format(MTLVertexFormat::Float3);
+        position_attribute.set_format(MTLVertexFormat::Float2);
         position_attribute.set_buffer_index(0);
         position_attribute.set_offset(0);
         vertex_descriptor
             .attributes()
             .set_object_at(0, Some(&position_attribute));
 
-        let color_attribute = VertexAttributeDescriptor::new();
-        color_attribute.set_format(MTLVertexFormat::Float3);
-        color_attribute.set_buffer_index(0);
-        color_attribute.set_offset((size_of::<[f32; 3]>()) as NSUInteger);
+        let start_attribute = VertexAttributeDescriptor::new();
+        start_attribute.set_format(MTLVertexFormat::Float3);
+        start_attribute.set_buffer_index(1);
+        start_attribute.set_offset(0);
         vertex_descriptor
             .attributes()
-            .set_object_at(1, Some(&color_attribute));
+            .set_object_at(1, Some(&start_attribute));
+
+        let end_attribute = VertexAttributeDescriptor::new();
+        end_attribute.set_format(MTLVertexFormat::Float3);
+        end_attribute.set_buffer_index(1);
+        end_attribute.set_offset(size_of::<[f32; 3]>() as NSUInteger);
+        vertex_descriptor
+            .attributes()
+            .set_object_at(2, Some(&end_attribute));
+
+        let color_attribute = VertexAttributeDescriptor::new();
+        color_attribute.set_format(MTLVertexFormat::Float3);
+        color_attribute.set_buffer_index(1);
+        color_attribute.set_offset(size_of::<[f32; 6]>() as NSUInteger);
+        vertex_descriptor
+            .attributes()
+            .set_object_at(3, Some(&color_attribute));
+
+        let thickness_attribute = VertexAttributeDescriptor::new();
+        thickness_attribute.set_format(MTLVertexFormat::Float);
+        thickness_attribute.set_buffer_index(1);
+        thickness_attribute.set_offset((size_of::<[f32; 9]>()) as NSUInteger);
+        vertex_descriptor
+            .attributes()
+            .set_object_at(4, Some(&thickness_attribute));
 
         // Buffer layouts
         let vertex_buffer = VertexBufferLayoutDescriptor::new();
@@ -100,6 +135,14 @@ impl WidgetPipeline {
             .layouts()
             .set_object_at(0, Some(&vertex_buffer));
 
+        let instance_buffer = VertexBufferLayoutDescriptor::new();
+        instance_buffer.set_stride(size_of::<LineSegment>() as NSUInteger);
+        instance_buffer.set_step_function(MTLVertexStepFunction::PerInstance);
+        instance_buffer.set_step_rate(1);
+        vertex_descriptor
+            .layouts()
+            .set_object_at(1, Some(&instance_buffer));
+
         pipeline_descriptor.set_vertex_descriptor(Some(vertex_descriptor));
 
         device
@@ -107,12 +150,33 @@ impl WidgetPipeline {
             .unwrap()
     }
 
-    fn new_vertex_buffer(device: &DeviceRef) -> Shared<[Vertex; MAX_LINE_SEGMENTS]> {
+    fn new_vertex_buffer(device: &DeviceRef) -> Shared<[Vertex; VERTEX_COUNT]> {
+        let vertices = [
+            Vertex {
+                position: [-1.0, -1.0],
+            },
+            Vertex {
+                position: [-1.0, 1.0],
+            },
+            Vertex {
+                position: [1.0, -1.0],
+            },
+            Vertex {
+                position: [1.0, 1.0],
+            },
+        ];
+
+        Shared::new(device, vertices)
+    }
+
+    fn new_segment_buffer(device: &DeviceRef) -> Shared<[LineSegment; MAX_LINE_SEGMENTS]> {
         Shared::new(
             device,
-            [Vertex {
-                position: [0.0, 0.0, 0.0],
+            [LineSegment {
+                start: [0.0, 0.0, 0.0],
+                end: [0.0, 0.0, 0.0],
                 color: [0.0, 0.0, 0.0],
+                thickness: 0.0,
             }; MAX_LINE_SEGMENTS],
         )
     }
@@ -120,29 +184,30 @@ impl WidgetPipeline {
     pub fn new(device: &DeviceRef) -> Self {
         Self {
             pipeline: Self::new_pipeline(device),
-            vertex_count: 0,
             vertices: Self::new_vertex_buffer(device),
+            segment_count: 0,
+            segments: Self::new_segment_buffer(device),
         }
     }
 }
 // Drawing
 impl WidgetPipeline {
+    fn segment(a: Vector3<f32>, b: Vector3<f32>, color: Vector3<f32>) -> LineSegment {
+        LineSegment {
+            start: a.data.0[0],
+            end: b.data.0[0],
+            color: color.data.0[0],
+            thickness: 0.1,
+        }
+    }
+
     pub fn update_widgets(&mut self, widgets: &[Widget]) {
-        let mut vert_count = 0;
+        let mut segment_count = 0;
         for widget in widgets {
             match widget {
                 &Widget::Line { start, end, color } => {
-                    self.vertices[vert_count] = Vertex {
-                        position: start.data.0[0],
-                        color: color.data.0[0],
-                    };
-                    vert_count += 1;
-
-                    self.vertices[vert_count] = Vertex {
-                        position: end.data.0[0],
-                        color: color.data.0[0],
-                    };
-                    vert_count += 1;
+                    self.segments[segment_count] = Self::segment(start, end, color);
+                    segment_count += 1;
                 }
                 &Widget::Circle {
                     origin,
@@ -157,25 +222,15 @@ impl WidgetPipeline {
                     for i in 0..segments {
                         let last_i = if i == 0 { segments - 1 } else { i - 1 };
 
-                        let (a, b) = (points[last_i], points[i]);
-
-                        self.vertices[vert_count] = Vertex {
-                            position: a.data.0[0],
-                            color: color.data.0[0],
-                        };
-                        vert_count += 1;
-
-                        self.vertices[vert_count] = Vertex {
-                            position: b.data.0[0],
-                            color: color.data.0[0],
-                        };
-                        vert_count += 1;
+                        self.segments[segment_count] =
+                            Self::segment(points[last_i], points[i], color);
+                        segment_count += 1;
                     }
                 }
             }
         }
 
-        self.vertex_count = vert_count;
+        self.segment_count = segment_count;
     }
 
     pub fn draw_widgets<'a>(
@@ -187,9 +242,15 @@ impl WidgetPipeline {
             encoder.set_render_pipeline_state(&self.pipeline);
             encoder.set_depth_stencil_state(&depth_stencil);
             encoder.set_vertex_buffer(0, Some(self.vertices.buffer()), 0);
-            encoder.set_vertex_buffer(1, Some(uniforms.buffer()), 0);
+            encoder.set_vertex_buffer(1, Some(self.segments.buffer()), 0);
+            encoder.set_vertex_buffer(2, Some(uniforms.buffer()), 0);
 
-            encoder.draw_primitives(MTLPrimitiveType::Line, 0, self.vertex_count as NSUInteger)
+            encoder.draw_primitives_instanced(
+                MTLPrimitiveType::TriangleStrip,
+                0,
+                VERTEX_COUNT as NSUInteger,
+                self.segment_count as NSUInteger,
+            )
         }
     }
 }

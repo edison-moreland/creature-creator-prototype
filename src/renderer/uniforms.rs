@@ -7,17 +7,20 @@ use nalgebra::{Isometry3, Perspective3, Point3, Vector3};
 #[repr(C)]
 pub struct Uniforms {
     camera: [[f32; 4]; 4],
+    camera_position: [f32; 3],
 }
 
 impl Uniforms {
     pub fn new(camera: &Camera) -> Self {
         Self {
             camera: camera.mvp_matrix(),
+            camera_position: camera.eye.coords.data.0[0],
         }
     }
 
     pub fn camera_updated(&mut self, camera: &Camera) {
-        self.camera = camera.mvp_matrix()
+        self.camera = camera.mvp_matrix();
+        self.camera_position = camera.eye.coords.data.0[0];
     }
 }
 

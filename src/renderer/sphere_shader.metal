@@ -23,6 +23,7 @@ struct VertexOut {
 
 struct Uniform {
     float4x4 camera;
+    float3 camera_position;
 };
 
 float3 lambert_contribution(
