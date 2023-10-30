@@ -1,6 +1,7 @@
 use crate::plane::Plane;
 use crate::renderer::shared::Shared;
 use crate::renderer::uniforms::Uniforms;
+use crate::renderer::Widget;
 use metal::{
     DepthStencilStateRef, DeviceRef, MTLPixelFormat, MTLPrimitiveType, MTLVertexFormat,
     MTLVertexStepFunction, NSUInteger, RenderCommandEncoderRef, RenderPipelineDescriptor,
@@ -14,26 +15,6 @@ const STYLE_COUNT: usize = 2;
 const MAX_LINE_SEGMENTS: usize = 1000;
 const WIDGET_SHADER_LIBRARY: &[u8] = include_bytes!("widget_shader.metallib");
 
-pub enum Widget {
-    Line {
-        start: Vector3<f32>,
-        end: Vector3<f32>,
-        color: Vector3<f32>,
-    },
-    Circle {
-        origin: Vector3<f32>,
-        normal: Vector3<f32>,
-        radius: f32,
-        color: Vector3<f32>,
-    },
-    Arrow {
-        origin: Vector3<f32>,
-        direction: Vector3<f32>,
-        magnitude: f32,
-        color: Vector3<f32>,
-    },
-}
-
 #[derive(Copy, Clone)]
 #[repr(C)]
 struct Vertex {
@@ -42,13 +23,33 @@ struct Vertex {
 
 #[derive(Copy, Clone)]
 #[repr(C)]
-struct LineSegment {
+pub struct LineSegment {
     start: [f32; 3],
     end: [f32; 3],
     color: [f32; 3],
     thickness: f32,
     segment_size: f32, // 0 means no segments
     style: u32,
+}
+
+impl LineSegment {
+    pub fn new(
+        a: Vector3<f32>,
+        b: Vector3<f32>,
+        color: Vector3<f32>,
+        thickness: f32,
+        segment_size: f32,
+        style: u32,
+    ) -> Self {
+        Self {
+            start: a.data.0[0],
+            end: b.data.0[0],
+            color: color.data.0[0],
+            thickness,
+            segment_size,
+            style,
+        }
+    }
 }
 
 pub struct WidgetPipeline {
@@ -236,65 +237,16 @@ impl WidgetPipeline {
     }
 
     pub fn update_widgets(&mut self, widgets: &[Widget]) {
-        let mut segment_count = 0;
-        for widget in widgets {
-            match *widget {
-                Widget::Line { start, end, color } => {
-                    self.segments[segment_count] = Self::segment(start, end, color, 0.1, 0.0, 0);
-                    segment_count += 1;
-                }
-                Widget::Circle {
-                    origin,
-                    color,
-                    normal,
-                    radius,
-                } => {
-                    let segments = 24;
-                    let points =
-                        Plane::from_origin_normal(origin, normal).circle_points(segments, radius);
+        let mut segments = vec![];
 
-                    for i in 0..segments {
-                        let last_i = if i == 0 { segments - 1 } else { i - 1 };
-
-                        self.segments[segment_count] =
-                            Self::segment(points[last_i], points[i], color, 0.1, 0.0, 0);
-                        segment_count += 1;
-                    }
-                }
-                Widget::Arrow {
-                    origin,
-                    direction,
-                    magnitude,
-                    color,
-                } => {
-                    let start = origin;
-                    let end = start + (direction * magnitude);
-
-                    let stem_thickness = 0.2;
-                    let arrow_thickness = stem_thickness * 4.0;
-                    let arrow_head_length = arrow_thickness * 1.5;
-
-                    if magnitude <= arrow_head_length {
-                        self.segments[segment_count] =
-                            Self::segment(start, end, color, arrow_thickness, 0.0, 1);
-                        segment_count += 1;
-                    } else {
-                        let stem_length = magnitude - arrow_head_length;
-                        let stem_end = start + (direction * stem_length);
-
-                        self.segments[segment_count] =
-                            Self::segment(start, stem_end, color, stem_thickness, 0.0, 0);
-                        segment_count += 1;
-
-                        self.segments[segment_count] =
-                            Self::segment(stem_end, end, color, arrow_thickness, 0.0, 1);
-                        segment_count += 1;
-                    }
-                }
-            }
+        for w in widgets {
+            w.segments(&mut segments)
         }
 
+        let segment_count = segments.len();
+
         self.segment_count = segment_count;
+        self.segments[0..segment_count].copy_from_slice(&segments)
     }
 
     pub fn draw_widgets<'a>(

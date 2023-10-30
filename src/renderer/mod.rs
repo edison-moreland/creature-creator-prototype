@@ -15,16 +15,16 @@ use winit::window::Window;
 
 use crate::renderer::shared::Shared;
 use crate::renderer::sphere_pipeline::SpherePipeline;
-use crate::renderer::widget_pipeline::WidgetPipeline;
 
 pub use crate::renderer::sphere_pipeline::Sphere;
 pub use crate::renderer::uniforms::Camera;
-pub use crate::renderer::widget_pipeline::Widget;
+use crate::renderer::widgets::pipeline::WidgetPipeline;
+pub use crate::renderer::widgets::Widget;
 
 mod shared;
 mod sphere_pipeline;
 mod uniforms;
-mod widget_pipeline;
+mod widgets;
 
 fn create_metal_layer(device: &DeviceRef, window: &Window) -> MetalLayer {
     let layer = MetalLayer::new();
