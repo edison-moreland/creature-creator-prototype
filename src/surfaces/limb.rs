@@ -1,4 +1,5 @@
 use nalgebra::{point, vector, Matrix4, Point3, Rotation3, Scale3, Translation3, Vector3};
+use crate::renderer::Widget;
 
 use crate::surfaces::primitives::{ellipsoid, translate};
 use crate::surfaces::{gradient, on_surface, Surface};
@@ -74,5 +75,15 @@ impl Surface for Limb {
         }
 
         point
+    }
+
+    fn debug_widgets(&self) -> Vec<Widget> {
+        vec![
+            Widget::Line {
+                start: self.a,
+                end: self.b,
+                color: Default::default(),
+            }
+        ]
     }
 }

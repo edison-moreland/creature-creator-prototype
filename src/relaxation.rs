@@ -81,7 +81,7 @@ pub struct RelaxationSystem<S> {
     particles_a: [Particle; MAX_PARTICLE_COUNT],
     particles_b: [Particle; MAX_PARTICLE_COUNT],
 
-    surface: S,
+    pub(crate) surface: S,
     pub t: f32,
 }
 

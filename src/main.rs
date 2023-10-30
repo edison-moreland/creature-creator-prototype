@@ -153,11 +153,6 @@ impl<S: Surface> App<S> {
         //     radius: 30.0,
         //     color: vector![0.8, 0.0, 0.5],
         // });
-        widgets.push(Widget::Line {
-            start: vector![0.0, 0.0, 0.0],
-            end: vector![0.0, 10.0, 0.0],
-            color: vector![0.0, 1.0, 0.0],
-        });
 
         App {
             window,
@@ -192,8 +187,16 @@ impl<S: Surface> App<S> {
             })
             .collect();
 
+        // TODO: Particle system shouldn't own the surface
+
+        let surface_widgets_start = self.widgets.len();
+        let mut surface_widgets = self.particle_system.surface.debug_widgets();
+        self.widgets.append(&mut surface_widgets);
+
         self.renderer.draw(&particles, &self.widgets);
         let r_duration = start.elapsed();
+
+        self.widgets.drain(surface_widgets_start..);
 
         dbg!(p_duration, r_duration);
     }
