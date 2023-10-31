@@ -15,6 +15,7 @@ use crate::relaxation::RelaxationSystem;
 use crate::renderer::widgets::{CardinalArrows, Grid, Widget};
 use crate::renderer::{Camera, Renderer, Sphere};
 use crate::sampling::sample;
+use crate::surfaces::body::Core;
 use crate::surfaces::limb::Limb;
 use crate::surfaces::Surface;
 
@@ -27,14 +28,21 @@ mod spatial_indexer;
 mod surfaces;
 
 fn surface() -> impl Surface + Widget {
-    Limb::new(
-        vector![0.0, 10.0, 0.0],
-        vector![0.0, 0.0, 0.0],
-        vec![
-            (vector![0.0, 0.0, 0.0], vector![2.0, 1.0, 2.0]),
-            (vector![0.0, 0.0, -1.5], vector![1.0, 0.5, 1.0]),
-            (vector![0.0, 0.0, 1.5], vector![1.0, 0.5, 1.0]),
-        ],
+    // Limb::new(
+    //     vector![0.0, 10.0, 0.0],
+    //     vector![0.0, 0.0, 0.0],
+    //     vec![
+    //         (vector![0.0, 0.0, 0.0], vector![2.0, 1.0, 2.0]),
+    //         (vector![0.0, 0.0, -1.5], vector![1.0, 0.5, 1.0]),
+    //         (vector![0.0, 0.0, 1.5], vector![1.0, 0.5, 1.0]),
+    //     ],
+    // )
+
+    Core::new(
+        vector![-4.0, 16.0, 0.0],
+        vector![-4.0, 0.0, 0.0],
+        vector![4.0, 0.0, 0.0],
+        vector![4.0, 16.0, 0.0],
     )
 }
 
@@ -104,7 +112,6 @@ impl<S: Surface + Widget> App<S> {
 
         let start = Instant::now();
 
-        // TODO: Particle system shouldn't own the surface
         self.renderer.draw_spheres(
             self.particle_system
                 .positions()

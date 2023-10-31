@@ -1,6 +1,6 @@
 use crate::renderer::widgets::strokes::{Stroke, StrokeSet, Style};
 use crate::renderer::widgets::Widget;
-use nalgebra::{point, vector, Matrix4, Point3, Rotation3, Scale3, Translation3, Vector3};
+use nalgebra::{point, vector, Matrix4, Point, Point3, Rotation3, Scale3, Translation3, Vector3};
 
 use crate::surfaces::primitives::{ellipsoid, translate};
 use crate::surfaces::{gradient, on_surface, Surface};
@@ -41,6 +41,16 @@ impl Limb {
         assert_eq!(to.transform_point(&Point3::from(b)), point![0.0, -1.0, 0.0]);
         assert_eq!(to.transform_point(&Point3::from(a)), point![0.0, 1.0, 0.0]);
 
+        let debug_info = Self::debug_info(a, b, origin);
+
+        Limb {
+            debug_info,
+            to,
+            surfaces,
+        }
+    }
+
+    fn debug_info(a: Vector3<f32>, b: Vector3<f32>, origin: Point<f32, 3>) -> StrokeSet {
         let mut debug_info = StrokeSet::new();
         debug_info.set_palette(vec![
             Style::new(vector![0.0, 0.0, 0.0], 0.4, 0.0),
@@ -73,12 +83,7 @@ impl Limb {
                 radius: 3.0,
             },
         );
-
-        Limb {
-            debug_info,
-            to,
-            surfaces,
-        }
+        debug_info
     }
 }
 
@@ -113,7 +118,11 @@ impl Surface for Limb {
             panic!("uh oh!")
         }
 
-        point
+        self.to
+            .try_inverse()
+            .unwrap()
+            .transform_point(&Point3::from(point))
+            .coords
     }
 }
 
