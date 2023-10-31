@@ -18,7 +18,7 @@ const FISSION_COEFFICIENT: f32 = 0.2;
 const DEATH_COEFFICIENT: f32 = 0.7;
 const MAX_RADIUS_COEFFICIENT: f32 = 1.2;
 const DESIRED_REPULSION_ENERGY: f32 = REPULSION_AMPLITUDE * 0.8;
-const MAX_PARTICLE_COUNT: usize = 20000;
+const MAX_PARTICLE_COUNT: usize = 10000;
 
 fn random_velocity() -> Vector3<f32> {
     Vector3::new(rand::random(), rand::random(), rand::random()).normalize()
@@ -36,12 +36,13 @@ fn constrain_to_surface(
     surface: &impl Surface,
     t: f32,
     position: Vector3<f32>,
+    normal: Vector3<f32>,
     velocity: Vector3<f32>,
 ) -> Vector3<f32> {
-    let grad = gradient(surface, t, position);
     velocity
-        - grad
-            .scale((grad.dot(&velocity) + (FEEDBACK * surface.at(t, position))) / (grad.dot(&grad)))
+        - normal.scale(
+            (normal.dot(&velocity) + (FEEDBACK * surface.at(t, position))) / (normal.dot(&normal)),
+        )
 }
 
 fn should_die(radius: f32, desired_radius: f32) -> bool {
@@ -64,6 +65,7 @@ fn should_fission_energy(radius: f32, energy: f32, desired_radius: f32) -> bool 
 struct Particle {
     position: Vector3<f32>,
     velocity: Vector3<f32>,
+    normal: Vector3<f32>,
     radius: f32,
 }
 
@@ -73,7 +75,7 @@ impl Positioned for Particle {
     }
 }
 
-pub struct RelaxationSystem<S> {
+pub struct RelaxationSystem {
     living_particles: Vec<usize>,
     position_index: KdIndexer,
     index_allocator: StackBufferAllocator<MAX_PARTICLE_COUNT>,
@@ -81,12 +83,11 @@ pub struct RelaxationSystem<S> {
     particles_a: [Particle; MAX_PARTICLE_COUNT],
     particles_b: [Particle; MAX_PARTICLE_COUNT],
 
-    pub(crate) surface: S,
     pub t: f32,
 }
 
-impl<S: Surface> RelaxationSystem<S> {
-    pub fn new(positions: Vec<Vector3<f32>>, sample_radius: f32, surface: S) -> Self {
+impl RelaxationSystem {
+    pub fn new<S: Surface>(positions: Vec<Vector3<f32>>, sample_radius: f32, surface: &S) -> Self {
         if positions.len() > MAX_PARTICLE_COUNT {
             panic!("TOO DANG BIG!!")
         }
@@ -94,6 +95,7 @@ impl<S: Surface> RelaxationSystem<S> {
         let mut particles = [Particle {
             position: vector![0.0, 0.0, 0.0],
             velocity: vector![0.0, 0.0, 0.0],
+            normal: vector![0.0, 0.0, 0.0],
             radius: sample_radius,
         }; MAX_PARTICLE_COUNT];
 
@@ -105,6 +107,7 @@ impl<S: Surface> RelaxationSystem<S> {
             let i = index_allocator.insert();
 
             particles[i].position = p;
+            particles[i].normal = gradient(surface, 0.0, p);
             living_particles.push(i)
         }
 
@@ -119,7 +122,6 @@ impl<S: Surface> RelaxationSystem<S> {
             particles_a: particles,
             particles_b: particles,
 
-            surface,
             t: 0.0,
         }
     }
@@ -129,15 +131,11 @@ impl<S: Surface> RelaxationSystem<S> {
     ) -> impl Iterator<Item = (Vector3<f32>, Vector3<f32>, f32)> + ExactSizeIterator + '_ {
         self.living_particles.iter().map(|i| {
             let particle = self.particles_a[*i];
-            let normal = gradient(&self.surface, self.t, particle.position).normalize();
-
-            (particle.position, normal, particle.radius)
+            (particle.position, particle.normal, particle.radius)
         })
-        //
-        // self.particles_a.iter().map(|p| (p.position, p.radius))
     }
 
-    pub fn update(&mut self, desired_radius: f32) {
+    pub fn update<S: Surface>(&mut self, desired_radius: f32, surface: &S) {
         for _ in 0..UPDATE_ITERATIONS {
             for j in (0..self.living_particles.len()).rev() {
                 let i = self.living_particles[j];
@@ -155,7 +153,6 @@ impl<S: Surface> RelaxationSystem<S> {
                     .map(|j| {
                         assert!(*j < MAX_PARTICLE_COUNT);
 
-                        // let pi = self.particles_a[i];
                         let pj = self.particles_a[*j];
 
                         (
@@ -186,12 +183,14 @@ impl<S: Surface> RelaxationSystem<S> {
                         self.particles_b[i] = Particle {
                             position: position + new_velocity,
                             velocity: vector![0.0, 0.0, 0.0],
+                            normal: gradient(surface, self.t, position + new_velocity),
                             radius: new_radius,
                         };
 
                         let sibling = Particle {
                             position: position - new_velocity,
                             velocity: vector![0.0, 0.0, 0.0],
+                            normal: gradient(surface, self.t, position - new_velocity),
                             radius: new_radius,
                         };
                         let sibling_i = self.index_allocator.insert();
@@ -202,19 +201,23 @@ impl<S: Surface> RelaxationSystem<S> {
                 }
 
                 let velocity = constrain_to_surface(
-                    &self.surface,
+                    surface,
                     self.t,
                     particle.position,
+                    particle.normal,
                     self.particle_velocity(particle.position, particle.radius, &neighbours),
                 );
 
                 let position = particle.position + velocity.scale(ITERATION_T_STEP);
+
+                let normal = gradient(surface, self.t, position);
 
                 let radius = self.particle_radius(position, particle.radius, energy, &neighbours);
 
                 self.particles_b[i] = Particle {
                     position,
                     velocity,
+                    normal,
                     radius,
                 }
             }
@@ -230,9 +233,6 @@ impl<S: Surface> RelaxationSystem<S> {
 
     fn repulsion_energy(&self, neighbours: &[(usize, f32, f32)]) -> f32 {
         neighbours.iter().map(|(_, energy, _)| energy).sum()
-        // neighbours
-        //     .iter()
-        //     .fold(0.0, |energy, (_, energy_cont, _)| energy + energy_cont)
     }
 
     fn particle_radius(

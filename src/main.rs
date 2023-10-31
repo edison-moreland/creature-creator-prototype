@@ -66,7 +66,9 @@ struct App<S> {
     renderer: Renderer,
 
     desired_radius: f32,
-    particle_system: RelaxationSystem<S>,
+    particle_system: RelaxationSystem,
+
+    surface: S,
 
     grid: Grid,
     arrows: CardinalArrows,
@@ -91,7 +93,7 @@ impl<S: Surface> App<S> {
         let points = sample(&surface, surface.sample_point(), sample_radius);
 
         println!("Done! Initializing particle system...");
-        let particle_system = RelaxationSystem::new(points, sample_radius, surface);
+        let particle_system = RelaxationSystem::new(points, sample_radius, &surface);
 
         let grid = Grid::new(100.0, 5.0);
         let arrows = CardinalArrows::new(vector![0.0, 0.05, 0.0], 25.0);
@@ -99,10 +101,11 @@ impl<S: Surface> App<S> {
         App {
             window,
             renderer,
-            desired_radius: 0.4,
+            desired_radius: 0.2,
             particle_system,
             grid,
             arrows,
+            surface,
         }
     }
 
@@ -116,7 +119,8 @@ impl<S: Surface> App<S> {
 
     fn draw(&mut self) {
         let start = Instant::now();
-        self.particle_system.update(self.desired_radius);
+        self.particle_system
+            .update(self.desired_radius, &self.surface);
         let p_duration = start.elapsed();
 
         let start = Instant::now();
