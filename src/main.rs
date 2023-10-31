@@ -12,7 +12,7 @@ use winit::{
 };
 
 use crate::relaxation::RelaxationSystem;
-use crate::renderer::widgets::{CardinalArrows, Grid};
+use crate::renderer::widgets::{CardinalArrows, Grid, Widget};
 use crate::renderer::{Camera, Renderer, Sphere};
 use crate::sampling::sample;
 use crate::surfaces::limb::Limb;
@@ -26,37 +26,16 @@ mod sampling;
 mod spatial_indexer;
 mod surfaces;
 
-fn surface() -> impl Surface {
+fn surface() -> impl Surface + Widget {
     Limb::new(
         vector![0.0, 10.0, 0.0],
         vector![0.0, 0.0, 0.0],
         vec![
             (vector![0.0, 0.0, 0.0], vector![2.0, 1.0, 2.0]),
-            (vector![0.0, 0.0, -2.0], vector![1.0, 0.5, 1.0]),
-            (vector![0.0, 0.0, 2.0], vector![1.0, 0.5, 1.0]),
+            (vector![0.0, 0.0, -1.5], vector![1.0, 0.5, 1.0]),
+            (vector![0.0, 0.0, 1.5], vector![1.0, 0.5, 1.0]),
         ],
     )
-
-    // SurfaceFn::new(vector![0.0, 0.0, 10.0], |t: f32, p: Vector3<f32>| -> f32 {
-    //     smooth_union(
-    //         sphere(10.0),
-    //         union(
-    //             rotate(
-    //                 vector![0.0, (t * 40.0) % 360.0, 0.0],
-    //                 smooth_union(
-    //                     translate(vector![-10.0, 0.0, 0.0], ellipsoid(10.0, 5.0, 5.0)),
-    //                     translate(vector![-20.0, 0.0, 0.0], sphere(10.0)),
-    //                     0.5,
-    //                 ),
-    //             ),
-    //             translate(
-    //                 vector![0.0, (t).sin() * 10.0, 0.0],
-    //                 ellipsoid(5.0, 10.0, 5.0),
-    //             ),
-    //         ),
-    //         0.5,
-    //     )(p)
-    // })
 }
 
 struct App<S> {
@@ -74,7 +53,7 @@ struct App<S> {
     arrows: CardinalArrows,
 }
 
-impl<S: Surface> App<S> {
+impl<S: Surface + Widget> App<S> {
     fn init(event_loop: &EventLoopWindowTarget<()>, surface: S) -> Self {
         let window = WindowBuilder::new()
             .with_title("Creature Creator")
@@ -140,6 +119,7 @@ impl<S: Surface> App<S> {
 
         self.renderer.draw_widget(&self.grid);
         self.renderer.draw_widget(&self.arrows);
+        self.renderer.draw_widget(&self.surface);
         self.renderer.commit();
 
         let r_duration = start.elapsed();

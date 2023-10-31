@@ -1,3 +1,5 @@
+use crate::renderer::widgets::strokes::{Stroke, StrokeSet, Style};
+use crate::renderer::widgets::Widget;
 use nalgebra::{point, vector, Matrix4, Point3, Rotation3, Scale3, Translation3, Vector3};
 
 use crate::surfaces::primitives::{ellipsoid, translate};
@@ -7,8 +9,8 @@ use crate::surfaces::{gradient, on_surface, Surface};
 // A number of implicit surface live on the limb with a local coordinate system
 // origin is at B, with an up vector pointing towards A. The range between A and B is 0.0,1.0
 pub struct Limb {
-    a: Vector3<f32>,
-    b: Vector3<f32>,
+    debug_info: StrokeSet,
+
     surfaces: Vec<(Vector3<f32>, Vector3<f32>)>,
     // (position, ellipsoid params)
     to: Matrix4<f32>,
@@ -39,7 +41,44 @@ impl Limb {
         assert_eq!(to.transform_point(&Point3::from(b)), point![0.0, -1.0, 0.0]);
         assert_eq!(to.transform_point(&Point3::from(a)), point![0.0, 1.0, 0.0]);
 
-        Limb { to, a, b, surfaces }
+        let mut debug_info = StrokeSet::new();
+        debug_info.set_palette(vec![
+            Style::new(vector![0.0, 0.0, 0.0], 0.4, 0.0),
+            Style::new(vector![0.0, 0.0, 0.0], 0.1, 0.0),
+        ]);
+
+        debug_info.stroke(0, Stroke::Line { start: a, end: b });
+        let normal = (a - b).normalize();
+        debug_info.stroke(
+            1,
+            Stroke::Circle {
+                origin: a,
+                normal,
+                radius: 3.0,
+            },
+        );
+        debug_info.stroke(
+            1,
+            Stroke::Circle {
+                origin: b,
+                normal,
+                radius: 3.0,
+            },
+        );
+        debug_info.stroke(
+            1,
+            Stroke::Circle {
+                origin: origin.coords,
+                normal,
+                radius: 3.0,
+            },
+        );
+
+        Limb {
+            debug_info,
+            to,
+            surfaces,
+        }
     }
 }
 
@@ -76,14 +115,10 @@ impl Surface for Limb {
 
         point
     }
+}
 
-    // fn debug_widgets(&self) -> Vec<Widget> {
-    //     vec![
-    //         Widget::Line {
-    //             start: self.a,
-    //             end: self.b,
-    //             color: Default::default(),
-    //         }
-    //     ]
-    // }
+impl Widget for Limb {
+    fn strokes(&self) -> &StrokeSet {
+        &self.debug_info
+    }
 }

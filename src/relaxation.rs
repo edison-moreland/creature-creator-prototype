@@ -107,7 +107,7 @@ impl RelaxationSystem {
             let i = index_allocator.insert();
 
             particles[i].position = p;
-            particles[i].normal = gradient(surface, 0.0, p);
+            particles[i].normal = gradient(surface, 0.0, p).normalize();
             living_particles.push(i)
         }
 
@@ -183,14 +183,14 @@ impl RelaxationSystem {
                         self.particles_b[i] = Particle {
                             position: position + new_velocity,
                             velocity: vector![0.0, 0.0, 0.0],
-                            normal: gradient(surface, self.t, position + new_velocity),
+                            normal: gradient(surface, self.t, position + new_velocity).normalize(),
                             radius: new_radius,
                         };
 
                         let sibling = Particle {
                             position: position - new_velocity,
                             velocity: vector![0.0, 0.0, 0.0],
-                            normal: gradient(surface, self.t, position - new_velocity),
+                            normal: gradient(surface, self.t, position - new_velocity).normalize(),
                             radius: new_radius,
                         };
                         let sibling_i = self.index_allocator.insert();
@@ -210,7 +210,7 @@ impl RelaxationSystem {
 
                 let position = particle.position + velocity.scale(ITERATION_T_STEP);
 
-                let normal = gradient(surface, self.t, position);
+                let normal = gradient(surface, self.t, position).normalize();
 
                 let radius = self.particle_radius(position, particle.radius, energy, &neighbours);
 
