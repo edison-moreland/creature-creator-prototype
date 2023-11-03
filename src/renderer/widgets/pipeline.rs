@@ -223,13 +223,15 @@ impl WidgetPipeline {
 // Drawing
 impl WidgetPipeline {
     pub fn draw_widget(&mut self, widget: &dyn Widget) {
-        let mut segments = vec![];
-        widget.strokes().line_segments(&mut segments);
-        let segment_count = segments.len();
+        if let Some(stroke_set) = widget.strokes() {
+            let mut segments = vec![];
+            stroke_set.line_segments(&mut segments);
+            let segment_count = segments.len();
 
-        self.segments[self.segment_count..self.segment_count + segment_count]
-            .copy_from_slice(&segments);
-        self.segment_count += segment_count;
+            self.segments[self.segment_count..self.segment_count + segment_count]
+                .copy_from_slice(&segments);
+            self.segment_count += segment_count;
+        }
     }
 
     pub fn reset(&mut self) {

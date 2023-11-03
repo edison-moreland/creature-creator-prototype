@@ -1,9 +1,10 @@
 use std::time::Instant;
 
-use nalgebra::{point, vector};
+use nalgebra::{point, vector, Vector3};
 use winit::dpi::{LogicalSize, PhysicalSize};
-use winit::event::StartCause;
+use winit::event::{KeyEvent, StartCause};
 use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
+use winit::keyboard::{Key, NamedKey};
 use winit::window::Window;
 use winit::{
     event::{Event, WindowEvent},
@@ -17,7 +18,8 @@ use crate::renderer::{Camera, Renderer, Sphere};
 use crate::sampling::sample;
 use crate::surfaces::body::Core;
 use crate::surfaces::limb::Limb;
-use crate::surfaces::Surface;
+use crate::surfaces::primitives::{sphere, translate};
+use crate::surfaces::{seed, Surface, SurfaceFn};
 
 mod buffer_allocator;
 mod plane;
@@ -28,22 +30,7 @@ mod spatial_indexer;
 mod surfaces;
 
 fn surface() -> impl Surface + Widget {
-    // Limb::new(
-    //     vector![0.0, 10.0, 0.0],
-    //     vector![0.0, 0.0, 0.0],
-    //     vec![
-    //         (vector![0.0, 0.0, 0.0], vector![2.0, 1.0, 2.0]),
-    //         (vector![0.0, 0.0, -1.5], vector![1.0, 0.5, 1.0]),
-    //         (vector![0.0, 0.0, 1.5], vector![1.0, 0.5, 1.0]),
-    //     ],
-    // )
-
-    Core::new(
-        vector![-4.0, 16.0, 0.0],
-        vector![-4.0, 0.0, 0.0],
-        vector![4.0, 0.0, 0.0],
-        vector![4.0, 16.0, 0.0],
-    )
+    SurfaceFn::new(|t, p| translate(vector![0.0, t.sin() * 2.0, 0.0], sphere(10.0))(p))
 }
 
 struct App<S> {
@@ -77,7 +64,12 @@ impl<S: Surface + Widget> App<S> {
         let sample_radius = 0.5;
 
         println!("Initial sampling...");
-        let points = sample(&surface, surface.sample_point(), sample_radius);
+        let seed = match surface.sample_point() {
+            Some(p) => p,
+            None => seed(&surface, 0.0),
+        };
+
+        let points = sample(&surface, seed, sample_radius);
 
         println!("Done! Initializing particle system...");
         let particle_system = RelaxationSystem::new(points, sample_radius, &surface);
@@ -88,7 +80,7 @@ impl<S: Surface + Widget> App<S> {
         App {
             window,
             renderer,
-            desired_radius: 0.2,
+            desired_radius: 0.5,
             particle_system,
             grid,
             arrows,
@@ -152,6 +144,11 @@ fn main() {
                     app.as_ref().unwrap().scale_factor_changed(scale_factor);
                 }
                 WindowEvent::Resized(size) => app.as_mut().unwrap().resized(size),
+                WindowEvent::KeyboardInput { event, .. } => {
+                    if event.logical_key == Key::Named(NamedKey::Escape) {
+                        event_loop.exit()
+                    }
+                }
                 _ => (),
             },
             Event::AboutToWait => app.as_mut().unwrap().draw(),

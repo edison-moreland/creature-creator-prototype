@@ -99,35 +99,9 @@ impl Surface for Limb {
             .min_by(|x, y| x.partial_cmp(y).unwrap())
             .unwrap()
     }
-
-    fn sample_point(&self) -> Vector3<f32> {
-        // Start with a point slight +X and refine it towards the surface
-        // Why slightly +X? It doesn't work otherwise and we don't ask questions.
-        let mut point = self.to.transform_point(&point![1.0, 0.0, 0.0]).coords;
-
-        for _ in 0..10 {
-            let grad = gradient(self, 0.0, point);
-            point -= grad.scale(self.at(0.0, point) / grad.dot(&grad));
-
-            if on_surface(self, 0.0, point) {
-                break;
-            }
-        }
-
-        if !on_surface(self, 0.0, point) {
-            panic!("uh oh!")
-        }
-
-        self.to
-            .try_inverse()
-            .unwrap()
-            .transform_point(&Point3::from(point))
-            .coords
-    }
 }
-
 impl Widget for Limb {
-    fn strokes(&self) -> &StrokeSet {
-        &self.debug_info
+    fn strokes(&self) -> Option<&StrokeSet> {
+        Some(&self.debug_info)
     }
 }

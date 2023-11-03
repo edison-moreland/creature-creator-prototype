@@ -6,7 +6,7 @@ pub mod pipeline;
 pub mod strokes;
 
 pub trait Widget {
-    fn strokes(&self) -> &StrokeSet;
+    fn strokes(&self) -> Option<&StrokeSet>;
 }
 
 pub struct Grid(StrokeSet);
@@ -42,8 +42,8 @@ impl Grid {
 }
 
 impl Widget for Grid {
-    fn strokes(&self) -> &StrokeSet {
-        &self.0
+    fn strokes(&self) -> Option<&StrokeSet> {
+        Some(&self.0)
     }
 }
 
@@ -90,7 +90,7 @@ impl CardinalArrows {
 }
 
 impl Widget for CardinalArrows {
-    fn strokes(&self) -> &StrokeSet {
-        &self.0
+    fn strokes(&self) -> Option<&StrokeSet> {
+        Some(&self.0)
     }
 }
