@@ -140,6 +140,10 @@ impl StrokeSet {
         self.strokes.push((stroke, style))
     }
 
+    pub fn clear(&mut self) {
+        self.strokes.clear()
+    }
+
     pub fn line_segments(&self, segments: &mut Vec<LineSegment>) {
         for (stroke, style_idx) in &self.strokes {
             stroke.segments(segments, &self.styles[*style_idx])

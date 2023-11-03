@@ -2,6 +2,16 @@ use std::f32::consts::PI;
 
 use nalgebra::{vector, Vector2, Vector3};
 
+pub fn plane_uv(origin: Vector3<f32>, normal: Vector3<f32>) -> (Vector3<f32>, Vector3<f32>) {
+    let mut cardinal = vector![0.0, 0.0, 0.0];
+    cardinal[normal.imin()] = 1.0;
+
+    let u = normal.cross(&cardinal).normalize();
+    let v = u.cross(&normal).normalize();
+
+    (u, v)
+}
+
 pub struct Plane {
     o: Vector3<f32>,
     u: Vector3<f32>,
@@ -10,12 +20,7 @@ pub struct Plane {
 
 impl Plane {
     pub fn from_origin_normal(o: Vector3<f32>, n: Vector3<f32>) -> Self {
-        // TODO: This replacement might work differently
-        let mut cardinal = vector![0.0, 0.0, 0.0];
-        cardinal[n.imin()] = 1.0;
-
-        let u = n.cross(&cardinal).normalize();
-        let v = u.cross(&n).normalize();
+        let (u, v) = plane_uv(o, n);
 
         Plane { o, u, v }
     }
