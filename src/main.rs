@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use nalgebra::{point, vector, Rotation3};
 use winit::dpi::{LogicalSize, PhysicalSize};
-use winit::event::{KeyEvent, StartCause};
+use winit::event::StartCause;
 use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
 use winit::keyboard::{Key, NamedKey};
 use winit::window::Window;
@@ -17,8 +17,7 @@ use crate::renderer::widgets::{CardinalArrows, Grid, Widget};
 use crate::renderer::{Camera, Renderer, Sphere};
 use crate::sampling::sample;
 use crate::stick_man::{Limb, StickMan};
-use crate::surfaces::primitives::{sphere, translate};
-use crate::surfaces::{Surface, SurfaceFn};
+use crate::surfaces::{seed, Surface};
 
 mod buffer_allocator;
 mod plane;
@@ -30,7 +29,40 @@ mod stick_man;
 mod surfaces;
 
 fn surface() -> impl Surface + Widget {
-    SurfaceFn::new(|t, p| translate(vector![0.0, t.sin() * 2.0, 0.0], sphere(10.0))(p))
+    let mut stick_man = StickMan::new(
+        vector![0.0, 0.0, 0.0],
+        vector![1.0, 0.0, 0.0],
+        vector![10.0, 15.0],
+    );
+
+    stick_man
+        .head_mut()
+        .attach(Limb::new(Rotation3::new(vector![0.0, 0.0, 1.0]), 5.0))
+        .attach(Limb::new(Rotation3::new(vector![0.0, 0.0, -2.0]), 5.0));
+
+    stick_man
+        .right_arm_mut()
+        .attach(Limb::new(Rotation3::new(vector![1.0, 0.0, 0.0]), 5.0))
+        .attach(Limb::new(Rotation3::new(vector![1.0, 0.0, 1.0]), 5.0));
+
+    stick_man
+        .left_arm_mut()
+        .attach(Limb::new(Rotation3::new(vector![1.0, 0.0, 0.0]), 5.0))
+        .attach(Limb::new(Rotation3::new(vector![1.0, 0.0, 1.0]), 5.0));
+
+    stick_man
+        .right_leg_mut()
+        .attach(Limb::new(Rotation3::new(vector![0.0, 0.0, 1.0]), 7.0))
+        .attach(Limb::new(Rotation3::new(vector![0.0, 0.0, -2.0]), 7.0));
+
+    stick_man
+        .left_leg_mut()
+        .attach(Limb::new(Rotation3::new(vector![0.0, 0.0, 1.0]), 7.0))
+        .attach(Limb::new(Rotation3::new(vector![0.0, 0.0, -2.0]), 7.0));
+
+    stick_man.update_debug_strokes();
+
+    stick_man
 }
 
 struct App<S> {
@@ -43,7 +75,6 @@ struct App<S> {
     particle_system: RelaxationSystem,
 
     surface: S,
-    stick_man: StickMan,
 
     grid: Grid,
     arrows: CardinalArrows,
@@ -78,45 +109,6 @@ impl<S: Surface + Widget> App<S> {
         let grid = Grid::new(100.0, 5.0);
         let arrows = CardinalArrows::new(vector![0.0, 0.05, 0.0], 25.0);
 
-        let mut stick_man = StickMan::new(
-            vector![0.0, 0.0, 0.0],
-            vector![1.0, 0.0, 0.0],
-            vector![10.0, 15.0],
-        );
-
-        stick_man
-            .head_mut()
-            .attach(Limb::new(Rotation3::new(vector![0.0, 0.0, 1.0]), 5.0))
-            .attach(Limb::new(Rotation3::new(vector![0.0, 0.0, -2.0]), 5.0));
-
-        stick_man
-            .right_arm_mut()
-            .attach(Limb::new(Rotation3::new(vector![1.0, 0.0, 0.0]), 5.0))
-            .attach(Limb::new(Rotation3::new(vector![1.0, 0.0, 1.0]), 5.0));
-
-        stick_man
-            .left_arm_mut()
-            .attach(Limb::new(Rotation3::new(vector![1.0, 0.0, 0.0]), 5.0))
-            .attach(Limb::new(Rotation3::new(vector![1.0, 0.0, 1.0]), 5.0));
-
-        stick_man
-            .right_leg_mut()
-            .attach(Limb::new(Rotation3::new(vector![0.0, 0.0, 1.0]), 7.0))
-            .attach(Limb::new(Rotation3::new(vector![0.0, 0.0, -2.0]), 7.0));
-
-        stick_man
-            .left_leg_mut()
-            .attach(Limb::new(Rotation3::new(vector![0.0, 0.0, 1.0]), 7.0))
-            .attach(Limb::new(Rotation3::new(vector![0.0, 0.0, -2.0]), 7.0));
-
-        stick_man.update_debug_strokes();
-
-        // stick_man.attach_head(LimbSection::new(vector![0.0, 1.0, 0.0], 10.0));
-        // stick_man.attach_right_arm(LimbSection::new(vector![0.0, 0.0, 1.0], 10.0));
-        // stick_man.attach_left_arm(LimbSection::new(vector![0.0, 0.0, -1.0], 10.0));
-        // stick_man.attach_right_leg(LimbSection::new(vector![0.0, -1.0, 0.0], 10.0));
-        // stick_man.attach_left_leg(LimbSection::new(vector![0.0, -1.0, 0.0], 10.0));
-        //
         App {
             window,
             renderer,
@@ -125,7 +117,6 @@ impl<S: Surface + Widget> App<S> {
             grid,
             arrows,
             surface,
-            stick_man,
         }
     }
 
@@ -145,22 +136,21 @@ impl<S: Surface + Widget> App<S> {
 
         let start = Instant::now();
 
-        // self.renderer.draw_spheres(
-        //     self.particle_system
-        //         .positions()
-        //         .map(|(point, normal, radius)| Sphere {
-        //             center: point.data.0[0],
-        //             normal: normal.data.0[0],
-        //             radius,
-        //         })
-        //         .collect::<Vec<Sphere>>()
-        //         .as_slice(),
-        // );
+        self.renderer.draw_spheres(
+            self.particle_system
+                .positions()
+                .map(|(point, normal, radius)| Sphere {
+                    center: point.data.0[0],
+                    normal: normal.data.0[0],
+                    radius,
+                })
+                .collect::<Vec<Sphere>>()
+                .as_slice(),
+        );
 
-        // self.renderer.draw_widget(&self.grid);
-        // self.renderer.draw_widget(&self.arrows);
-        self.renderer.draw_widget(&self.stick_man);
-        // self.renderer.draw_widget(&self.surface);
+        self.renderer.draw_widget(&self.grid);
+        self.renderer.draw_widget(&self.arrows);
+        self.renderer.draw_widget(&self.surface);
         self.renderer.commit();
 
         let r_duration = start.elapsed();

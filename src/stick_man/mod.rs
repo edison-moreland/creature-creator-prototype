@@ -3,9 +3,10 @@ mod limb_store;
 use crate::renderer::widgets::strokes::{Stroke, StrokeSet, Style};
 use crate::renderer::widgets::Widget;
 use crate::stick_man::limb_store::{Joint, JointRef, LimbStore};
-use nalgebra::{point, vector, Matrix4, Rotation3, Scale3, Translation3, Vector2, Vector3};
+use nalgebra::{point, vector, Matrix4, Point3, Rotation3, Scale3, Translation3, Vector2, Vector3};
 
 pub use crate::stick_man::limb_store::Limb;
+use crate::surfaces::primitives::ellipsoid;
 use crate::surfaces::Surface;
 
 pub struct StickMan {
@@ -156,7 +157,17 @@ impl StickMan {
 }
 
 impl Widget for StickMan {
-    fn strokes(&self) -> &StrokeSet {
-        &self.debug_info
+    fn strokes(&self) -> Option<&StrokeSet> {
+        Some(&self.debug_info)
+    }
+}
+
+impl Surface for StickMan {
+    fn at(&self, t: f32, p: Vector3<f32>) -> f32 {
+        let surface = ellipsoid(1.0, 1.0, 1.0);
+
+        let tp = self.to.transform_point(&Point3::from(p));
+
+        surface(tp.coords)
     }
 }
