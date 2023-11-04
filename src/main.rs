@@ -84,12 +84,12 @@ impl<S: Surface + Widget> App<S> {
             vector![15.0, 20.0],
         );
 
-        stick_man.attach_head(LimbSection::new(vector![0.0, 1.0, 0.0], 10.0));
-        stick_man.attach_right_arm(LimbSection::new(vector![1.0, 0.0, 0.0], 10.0));
-        stick_man.attach_left_arm(LimbSection::new(vector![-1.0, 0.0, 0.0], 10.0));
-        stick_man.attach_right_leg(LimbSection::new(vector![0.0, -1.0, 0.0], 10.0));
-        stick_man.attach_left_leg(LimbSection::new(vector![0.0, -1.0, 0.0], 10.0));
-
+        // stick_man.attach_head(LimbSection::new(vector![0.0, 1.0, 0.0], 10.0));
+        // stick_man.attach_right_arm(LimbSection::new(vector![0.0, 0.0, 1.0], 10.0));
+        // stick_man.attach_left_arm(LimbSection::new(vector![0.0, 0.0, -1.0], 10.0));
+        // stick_man.attach_right_leg(LimbSection::new(vector![0.0, -1.0, 0.0], 10.0));
+        // stick_man.attach_left_leg(LimbSection::new(vector![0.0, -1.0, 0.0], 10.0));
+        //
         App {
             window,
             renderer,
