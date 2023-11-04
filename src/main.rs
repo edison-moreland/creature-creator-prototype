@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use nalgebra::{point, vector, Vector3};
+use nalgebra::{point, vector, Rotation3};
 use winit::dpi::{LogicalSize, PhysicalSize};
 use winit::event::{KeyEvent, StartCause};
 use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
@@ -16,7 +16,7 @@ use crate::relaxation::RelaxationSystem;
 use crate::renderer::widgets::{CardinalArrows, Grid, Widget};
 use crate::renderer::{Camera, Renderer, Sphere};
 use crate::sampling::sample;
-use crate::stick_man::StickMan;
+use crate::stick_man::{Limb, StickMan};
 use crate::surfaces::primitives::{sphere, translate};
 use crate::surfaces::{Surface, SurfaceFn};
 
@@ -80,9 +80,36 @@ impl<S: Surface + Widget> App<S> {
 
         let mut stick_man = StickMan::new(
             vector![0.0, 0.0, 0.0],
-            vector![0.0, 0.0, 1.0],
-            vector![15.0, 20.0],
+            vector![1.0, 0.0, 0.0],
+            vector![10.0, 15.0],
         );
+
+        stick_man
+            .head_joint()
+            .attach(Limb::new(Rotation3::new(vector![0.0, 0.0, 1.0]), 5.0))
+            .attach(Limb::new(Rotation3::new(vector![0.0, 0.0, -2.0]), 5.0));
+
+        stick_man
+            .right_arm_joint()
+            .attach(Limb::new(Rotation3::new(vector![1.0, 0.0, 0.0]), 5.0))
+            .attach(Limb::new(Rotation3::new(vector![1.0, 0.0, 1.0]), 5.0));
+
+        stick_man
+            .left_arm_joint()
+            .attach(Limb::new(Rotation3::new(vector![1.0, 0.0, 0.0]), 5.0))
+            .attach(Limb::new(Rotation3::new(vector![1.0, 0.0, 1.0]), 5.0));
+
+        stick_man
+            .right_leg_joint()
+            .attach(Limb::new(Rotation3::new(vector![0.0, 0.0, 1.0]), 7.0))
+            .attach(Limb::new(Rotation3::new(vector![0.0, 0.0, -2.0]), 7.0));
+
+        stick_man
+            .left_leg_joint()
+            .attach(Limb::new(Rotation3::new(vector![0.0, 0.0, 1.0]), 7.0))
+            .attach(Limb::new(Rotation3::new(vector![0.0, 0.0, -2.0]), 7.0));
+
+        stick_man.update_debug_strokes();
 
         // stick_man.attach_head(LimbSection::new(vector![0.0, 1.0, 0.0], 10.0));
         // stick_man.attach_right_arm(LimbSection::new(vector![0.0, 0.0, 1.0], 10.0));
