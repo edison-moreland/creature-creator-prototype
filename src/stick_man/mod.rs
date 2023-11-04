@@ -6,6 +6,7 @@ use crate::stick_man::limb_store::{Joint, JointRef, LimbStore};
 use nalgebra::{point, vector, Matrix4, Rotation3, Scale3, Translation3, Vector2, Vector3};
 
 pub use crate::stick_man::limb_store::Limb;
+use crate::surfaces::Surface;
 
 pub struct StickMan {
     debug_info: StrokeSet,
@@ -111,27 +112,25 @@ impl StickMan {
         self.stroke_core(a, b, c, d);
         self.stroke_normal(origin, normal);
 
-        self.stroke_joint((a + b) / 2.0, self.from, &self.head().clone());
-        self.stroke_joint(a, self.from, &self.right_arm().clone());
-        self.stroke_joint(b, self.from, &self.left_arm().clone());
-        self.stroke_joint(d, self.from, &self.right_leg().clone());
-        self.stroke_joint(c, self.from, &self.left_leg().clone());
+        let roti = Rotation3::identity().to_homogeneous();
+        self.stroke_joint((a + b) / 2.0, roti, &self.head().clone());
+        self.stroke_joint(a, roti, &self.right_arm().clone());
+        self.stroke_joint(b, roti, &self.left_arm().clone());
+        self.stroke_joint(d, roti, &self.right_leg().clone());
+        self.stroke_joint(c, roti, &self.left_leg().clone());
     }
 
     fn stroke_joint(&mut self, origin: Vector3<f32>, transform: Matrix4<f32>, joint: &JointRef) {
         if let Some(limb) = joint.limb() {
             let accum_transform = limb.transform.to_homogeneous() * transform;
 
-            let end =
-                origin + (accum_transform.transform_vector(&joint.basis()).normalize() * limb.size);
+            let final_transform = self.from * accum_transform;
 
-            self.debug_info.stroke(
-                0,
-                Stroke::Line {
-                    start: origin,
-                    end: end,
-                },
-            );
+            let end =
+                origin + (final_transform.transform_vector(&joint.basis()).normalize() * limb.size);
+
+            self.debug_info
+                .stroke(0, Stroke::Line { start: origin, end });
 
             self.stroke_joint(end, accum_transform, &joint.next_joint().unwrap())
         }
