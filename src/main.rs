@@ -85,27 +85,27 @@ impl<S: Surface + Widget> App<S> {
         );
 
         stick_man
-            .head_joint()
+            .head_mut()
             .attach(Limb::new(Rotation3::new(vector![0.0, 0.0, 1.0]), 5.0))
             .attach(Limb::new(Rotation3::new(vector![0.0, 0.0, -2.0]), 5.0));
 
         stick_man
-            .right_arm_joint()
+            .right_arm_mut()
             .attach(Limb::new(Rotation3::new(vector![1.0, 0.0, 0.0]), 5.0))
             .attach(Limb::new(Rotation3::new(vector![1.0, 0.0, 1.0]), 5.0));
 
         stick_man
-            .left_arm_joint()
+            .left_arm_mut()
             .attach(Limb::new(Rotation3::new(vector![1.0, 0.0, 0.0]), 5.0))
             .attach(Limb::new(Rotation3::new(vector![1.0, 0.0, 1.0]), 5.0));
 
         stick_man
-            .right_leg_joint()
+            .right_leg_mut()
             .attach(Limb::new(Rotation3::new(vector![0.0, 0.0, 1.0]), 7.0))
             .attach(Limb::new(Rotation3::new(vector![0.0, 0.0, -2.0]), 7.0));
 
         stick_man
-            .left_leg_joint()
+            .left_leg_mut()
             .attach(Limb::new(Rotation3::new(vector![0.0, 0.0, 1.0]), 7.0))
             .attach(Limb::new(Rotation3::new(vector![0.0, 0.0, -2.0]), 7.0));
 
