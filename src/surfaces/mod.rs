@@ -3,9 +3,9 @@ use crate::renderer::widgets::Widget;
 use nalgebra::{vector, Vector3};
 use rand::random;
 
-pub mod body;
-pub mod limb;
 pub mod primitives;
+pub mod relaxation;
+pub mod sampling;
 
 pub trait Surface {
     fn at(&self, t: f32, p: Vector3<f32>) -> f32;

@@ -13,18 +13,16 @@ use winit::{
     window::WindowBuilder,
 };
 
-use crate::relaxation::RelaxationSystem;
 use crate::renderer::widgets::{CardinalArrows, Grid, Widget};
 use crate::renderer::{Camera, Renderer};
-use crate::sampling::sample;
 use crate::surfaces::primitives::{sphere, translate};
+use crate::surfaces::relaxation::RelaxationSystem;
+use crate::surfaces::sampling::sample;
 use crate::surfaces::{seed, Surface, SurfaceFn};
 
 mod buffer_allocator;
 mod plane;
-mod relaxation;
 mod renderer;
-mod sampling;
 mod spatial_indexer;
 mod surfaces;
 
