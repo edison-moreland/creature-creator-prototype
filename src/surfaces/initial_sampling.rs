@@ -2,7 +2,7 @@ use std::f64::consts::PI;
 
 use nalgebra::{point, Point3};
 
-use crate::plane::Plane;
+use crate::geometry::Plane;
 use crate::spatial_indexer::kd_indexer::KdContainer;
 use crate::surfaces::{gradient, on_surface, seed, Surface};
 

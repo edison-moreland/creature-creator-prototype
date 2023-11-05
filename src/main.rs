@@ -19,8 +19,7 @@ use crate::renderer::{Camera, Renderer};
 use crate::surfaces::live_sampling::SamplingSystem;
 use crate::surfaces::{Shape, Surface};
 
-mod buffer_allocator;
-mod plane;
+mod geometry;
 mod renderer;
 mod spatial_indexer;
 mod surfaces;

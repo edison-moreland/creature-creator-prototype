@@ -2,6 +2,7 @@ use nalgebra::{point, vector, Matrix4, Point3, Transform3, Vector3};
 
 use crate::surfaces::primitives::ellipsoid;
 
+mod buffer_allocator;
 pub mod initial_sampling;
 pub mod live_sampling;
 mod primitives;
