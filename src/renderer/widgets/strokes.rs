@@ -38,7 +38,7 @@ pub enum Stroke {
 }
 
 impl Stroke {
-    fn segments(&self, segments: &mut Vec<LineSegment>, style: &Style) {
+    pub(crate) fn segments(&self, segments: &mut Vec<LineSegment>, style: &Style) {
         match *self {
             Self::Line { start, end } => {
                 segments.push(LineSegment::new(
@@ -115,34 +115,6 @@ impl Stroke {
                     ));
                 }
             }
-        }
-    }
-}
-
-pub struct StrokeSet {
-    styles: Vec<Style>,
-    strokes: Vec<(Stroke, usize)>,
-}
-
-impl StrokeSet {
-    pub fn new() -> Self {
-        StrokeSet {
-            styles: vec![],
-            strokes: vec![],
-        }
-    }
-
-    pub fn set_palette(&mut self, styles: Vec<Style>) {
-        self.styles = styles
-    }
-
-    pub fn stroke(&mut self, style: usize, stroke: Stroke) {
-        self.strokes.push((stroke, style))
-    }
-
-    pub fn line_segments(&self, segments: &mut Vec<LineSegment>) {
-        for (stroke, style_idx) in &self.strokes {
-            stroke.segments(segments, &self.styles[*style_idx])
         }
     }
 }

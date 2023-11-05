@@ -222,16 +222,14 @@ impl WidgetPipeline {
 
 // Drawing
 impl WidgetPipeline {
-    pub fn draw_widget(&mut self, widget: &dyn Widget) {
-        if let Some(stroke_set) = widget.strokes() {
-            let mut segments = vec![];
-            stroke_set.line_segments(&mut segments);
-            let segment_count = segments.len();
+    pub fn draw_widget(&mut self, widget: &Widget) {
+        let mut segments = vec![];
+        widget.line_segments(&mut segments);
+        let segment_count = segments.len();
 
-            self.segments[self.segment_count..self.segment_count + segment_count]
-                .copy_from_slice(&segments);
-            self.segment_count += segment_count;
-        }
+        self.segments[self.segment_count..self.segment_count + segment_count]
+            .copy_from_slice(&segments);
+        self.segment_count += segment_count;
     }
 
     pub fn reset(&mut self) {

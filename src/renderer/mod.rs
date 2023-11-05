@@ -1,13 +1,13 @@
 use cocoa::appkit::NSView;
 use cocoa::base::id;
 use core_graphics_types::geometry::CGSize;
+use metal::objc::runtime::YES;
 use metal::{
-    CommandQueue, DepthStencilDescriptor, DepthStencilState, Device, DeviceRef, MetalDrawableRef,
-    MetalLayer, MTLClearColor, MTLCompareFunction, MTLLoadAction, MTLPixelFormat,
-    MTLStorageMode, MTLStoreAction, MTLTextureUsage, RenderCommandEncoderRef, Texture,
+    CommandQueue, DepthStencilDescriptor, DepthStencilState, Device, DeviceRef, MTLClearColor,
+    MTLCompareFunction, MTLLoadAction, MTLPixelFormat, MTLStorageMode, MTLStoreAction,
+    MTLTextureUsage, MetalDrawableRef, MetalLayer, RenderCommandEncoderRef, Texture,
     TextureDescriptor,
 };
-use metal::objc::runtime::YES;
 use winit::dpi::PhysicalSize;
 use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
 use winit::window::Window;
@@ -15,12 +15,14 @@ use winit::window::Window;
 use surfaces::SurfacePipeline;
 use uniforms::Uniforms;
 
+use crate::renderer::graph::{Kind, RenderGraph};
 use crate::renderer::shared::Shared;
 use crate::renderer::surfaces::Surface;
 pub use crate::renderer::uniforms::Camera;
 use crate::renderer::widgets::pipeline::WidgetPipeline;
 use crate::renderer::widgets::Widget;
 
+pub mod graph;
 mod shared;
 pub mod surfaces;
 mod uniforms;
@@ -133,13 +135,25 @@ impl Renderer {
         self.layer.set_contents_scale(scale_factor);
     }
 
-    pub fn draw_surface(&mut self, surface: &Surface, sample_radius: f32) {
-        self.sphere_pipeline.draw_surface(surface, sample_radius);
+    pub fn draw_graph(&mut self, surface_sample_radius: f32, graph: &RenderGraph) {
+        let mut surface = Surface::new();
+
+        graph.walk(|transform, kind| match kind {
+            Kind::Widget(w) => self.widget_pipeline.draw_widget(w),
+            Kind::Shape(s) => surface.push(transform, *s),
+        });
+
+        self.sphere_pipeline
+            .draw_surface(&surface, surface_sample_radius)
     }
 
-    pub fn draw_widget(&mut self, widget: &dyn Widget) {
-        self.widget_pipeline.draw_widget(widget);
-    }
+    // pub fn draw_surface(&mut self, surface: &Surface, sample_radius: f32) {
+    //     self.sphere_pipeline.draw_surface(surface, sample_radius);
+    // }
+    //
+    // pub fn draw_widget(&mut self, widget: &dyn Widget) {
+    //     self.widget_pipeline.draw_widget(widget);
+    // }
 
     pub fn commit(&mut self) {
         let drawable = match self.layer.next_drawable() {

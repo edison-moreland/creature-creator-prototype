@@ -1,4 +1,4 @@
-use nalgebra::{Matrix4, point, Point3, Transform3, vector, Vector3};
+use nalgebra::{point, vector, Matrix4, Point3, Transform3, Vector3};
 
 pub use pipeline::SurfacePipeline;
 
@@ -8,6 +8,7 @@ mod pipeline;
 mod primitives;
 mod sampling;
 
+#[derive(Copy, Clone)]
 pub enum Shape {
     Ellipsoid(Vector3<f32>),
 }

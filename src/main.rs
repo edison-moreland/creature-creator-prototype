@@ -1,20 +1,21 @@
 use std::time::Instant;
 
-use nalgebra::{point, Transform3, vector};
-use winit::{
-    event::{Event, WindowEvent},
-    event_loop::EventLoop,
-    window::WindowBuilder,
-};
+use nalgebra::{point, vector, Transform3};
 use winit::dpi::{LogicalSize, PhysicalSize};
 use winit::event::StartCause;
 use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
 use winit::keyboard::{Key, NamedKey};
 use winit::window::Window;
+use winit::{
+    event::{Event, WindowEvent},
+    event_loop::EventLoop,
+    window::WindowBuilder,
+};
 
-use crate::renderer::{Camera, Renderer};
+use crate::renderer::graph::{Kind, Node, RenderGraph};
 use crate::renderer::surfaces::{Shape, Surface};
-use crate::renderer::widgets::{CardinalArrows, Grid};
+use crate::renderer::widgets::{cardinal_arrows, grid};
+use crate::renderer::{Camera, Renderer};
 
 mod geometry;
 mod renderer;
@@ -36,17 +37,11 @@ struct App {
     window: Window,
 
     renderer: Renderer,
-
-    sample_radius: f32,
-
-    surface: Surface,
-
-    grid: Grid,
-    arrows: CardinalArrows,
+    render_graph: RenderGraph,
 }
 
 impl App {
-    fn init(event_loop: &EventLoopWindowTarget<()>, surface: Surface) -> Self {
+    fn init(event_loop: &EventLoopWindowTarget<()>) -> Self {
         let window = WindowBuilder::new()
             .with_title("Creature Creator")
             .with_inner_size(LogicalSize::new(800, 600))
@@ -58,13 +53,31 @@ impl App {
             Camera::new(point![40.0, 40.0, 40.0], point![0.0, 0.0, 0.0], 60.0),
         );
 
+        let mut render_graph = RenderGraph::new();
+        render_graph.insert_under(
+            0,
+            Node::new(Transform3::identity(), Some(Kind::Widget(grid(100.0, 5.0)))),
+        );
+        render_graph.insert_under(
+            0,
+            Node::new(
+                Transform3::identity(),
+                Some(Kind::Widget(cardinal_arrows(point![0.0, 0.0, 0.0], 20.0))),
+            ),
+        );
+
+        render_graph.insert_under(
+            0,
+            Node::new(
+                Transform3::identity(),
+                Some(Kind::Shape(Shape::Ellipsoid(vector![10.0, 10.0, 10.0]))),
+            ),
+        );
+
         App {
             window,
             renderer,
-            sample_radius: 0.5,
-            grid: Grid::new(100.0, 5.0),
-            arrows: CardinalArrows::new(point![0.0, 0.05, 0.0], 25.0),
-            surface,
+            render_graph,
         }
     }
 
@@ -79,10 +92,7 @@ impl App {
     fn draw(&mut self) {
         let start = Instant::now();
 
-        self.renderer
-            .draw_surface(&self.surface, self.sample_radius);
-        self.renderer.draw_widget(&self.grid);
-        self.renderer.draw_widget(&self.arrows);
+        self.renderer.draw_graph(0.5, &self.render_graph);
         self.renderer.commit();
 
         let draw_duration = start.elapsed();
@@ -97,7 +107,7 @@ fn main() {
     event_loop
         .run(move |event, event_loop| match event {
             Event::NewEvents(StartCause::Init) => {
-                app.replace(App::init(event_loop, surface()));
+                app.replace(App::init(event_loop));
 
                 event_loop.set_control_flow(ControlFlow::Poll)
             }

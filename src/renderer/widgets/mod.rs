@@ -1,96 +1,103 @@
-use nalgebra::{point, Point3, vector};
+use nalgebra::{point, vector, Point3};
 
-use crate::renderer::widgets::strokes::{Stroke, StrokeSet, Style};
+use crate::renderer::widgets::pipeline::LineSegment;
+pub use crate::renderer::widgets::strokes::{Stroke, Style};
 
 pub mod pipeline;
-pub mod strokes;
+mod strokes;
 
-pub trait Widget {
-    fn strokes(&self) -> Option<&StrokeSet>;
+pub struct Widget {
+    styles: Vec<Style>,
+    strokes: Vec<(Stroke, usize)>,
 }
 
-pub struct Grid(StrokeSet);
-
-impl Grid {
-    pub fn new(size: f32, step: f32) -> Self {
-        let mut stroke_set = StrokeSet::new();
-        stroke_set.set_palette(vec![Style::new(vector![0.0, 0.0, 0.0], 0.1, 0.0)]);
-
-        let start = -(size / 2.0);
-
-        let mut grid_line_position = start;
-        while grid_line_position <= -start {
-            stroke_set.stroke(
-                0,
-                Stroke::Line {
-                    start: point![grid_line_position, 0.0, -start],
-                    end: point![grid_line_position, 0.0, start],
-                },
-            );
-            stroke_set.stroke(
-                0,
-                Stroke::Line {
-                    start: point![-start, 0.0, grid_line_position],
-                    end: point![start, 0.0, grid_line_position],
-                },
-            );
-            grid_line_position += step
+impl Widget {
+    pub fn new() -> Self {
+        Widget {
+            styles: vec![],
+            strokes: vec![],
         }
+    }
 
-        Self(stroke_set)
+    pub fn set_palette(&mut self, styles: Vec<Style>) {
+        self.styles = styles
+    }
+
+    pub fn stroke(&mut self, style: usize, stroke: Stroke) {
+        self.strokes.push((stroke, style))
+    }
+
+    pub fn line_segments(&self, segments: &mut Vec<LineSegment>) {
+        for (stroke, style_idx) in &self.strokes {
+            stroke.segments(segments, &self.styles[*style_idx])
+        }
     }
 }
 
-impl Widget for Grid {
-    fn strokes(&self) -> Option<&StrokeSet> {
-        Some(&self.0)
-    }
-}
+pub struct Grid(Widget);
 
-pub struct CardinalArrows(StrokeSet);
+pub fn grid(size: f32, step: f32) -> Widget {
+    let mut widget = Widget::new();
+    widget.set_palette(vec![Style::new(vector![0.0, 0.0, 0.0], 0.1, 0.0)]);
 
-impl CardinalArrows {
-    pub fn new(origin: Point3<f32>, magnitude: f32) -> Self {
-        let mut stroke_set = StrokeSet::new();
-        stroke_set.set_palette(vec![
-            Style::new(vector![1.0, 0.0, 0.0], 0.2, 0.0),
-            Style::new(vector![0.0, 1.0, 0.0], 0.2, 0.0),
-            Style::new(vector![0.0, 0.0, 1.0], 0.2, 0.0),
-        ]);
+    let start = -(size / 2.0);
 
-        stroke_set.stroke(
+    let mut grid_line_position = start;
+    while grid_line_position <= -start {
+        widget.stroke(
             0,
-            Stroke::Arrow {
-                direction: vector![1.0, 0.0, 0.0],
-                origin,
-                magnitude,
+            Stroke::Line {
+                start: point![grid_line_position, 0.0, -start],
+                end: point![grid_line_position, 0.0, start],
             },
         );
-
-        stroke_set.stroke(
-            1,
-            Stroke::Arrow {
-                direction: vector![0.0, 1.0, 0.0],
-                origin,
-                magnitude,
+        widget.stroke(
+            0,
+            Stroke::Line {
+                start: point![-start, 0.0, grid_line_position],
+                end: point![start, 0.0, grid_line_position],
             },
         );
-
-        stroke_set.stroke(
-            2,
-            Stroke::Arrow {
-                direction: vector![0.0, 0.0, 1.0],
-                origin,
-                magnitude,
-            },
-        );
-
-        Self(stroke_set)
+        grid_line_position += step
     }
+
+    widget
 }
 
-impl Widget for CardinalArrows {
-    fn strokes(&self) -> Option<&StrokeSet> {
-        Some(&self.0)
-    }
+pub fn cardinal_arrows(origin: Point3<f32>, magnitude: f32) -> Widget {
+    let mut widget = Widget::new();
+    widget.set_palette(vec![
+        Style::new(vector![1.0, 0.0, 0.0], 0.2, 0.0),
+        Style::new(vector![0.0, 1.0, 0.0], 0.2, 0.0),
+        Style::new(vector![0.0, 0.0, 1.0], 0.2, 0.0),
+    ]);
+
+    widget.stroke(
+        0,
+        Stroke::Arrow {
+            direction: vector![1.0, 0.0, 0.0],
+            origin,
+            magnitude,
+        },
+    );
+
+    widget.stroke(
+        1,
+        Stroke::Arrow {
+            direction: vector![0.0, 1.0, 0.0],
+            origin,
+            magnitude,
+        },
+    );
+
+    widget.stroke(
+        2,
+        Stroke::Arrow {
+            direction: vector![0.0, 0.0, 1.0],
+            origin,
+            magnitude,
+        },
+    );
+
+    widget
 }
