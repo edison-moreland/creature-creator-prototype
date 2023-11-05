@@ -1,4 +1,4 @@
-use nalgebra::{vector, Vector3};
+use nalgebra::{point, vector, Point3, Vector3};
 
 use crate::renderer::widgets::strokes::{Stroke, StrokeSet, Style};
 
@@ -23,15 +23,15 @@ impl Grid {
             stroke_set.stroke(
                 0,
                 Stroke::Line {
-                    start: vector![grid_line_position, 0.0, -start],
-                    end: vector![grid_line_position, 0.0, start],
+                    start: point![grid_line_position, 0.0, -start],
+                    end: point![grid_line_position, 0.0, start],
                 },
             );
             stroke_set.stroke(
                 0,
                 Stroke::Line {
-                    start: vector![-start, 0.0, grid_line_position],
-                    end: vector![start, 0.0, grid_line_position],
+                    start: point![-start, 0.0, grid_line_position],
+                    end: point![start, 0.0, grid_line_position],
                 },
             );
             grid_line_position += step
@@ -50,7 +50,7 @@ impl Widget for Grid {
 pub struct CardinalArrows(StrokeSet);
 
 impl CardinalArrows {
-    pub fn new(origin: Vector3<f32>, magnitude: f32) -> Self {
+    pub fn new(origin: Point3<f32>, magnitude: f32) -> Self {
         let mut stroke_set = StrokeSet::new();
         stroke_set.set_palette(vec![
             Style::new(vector![1.0, 0.0, 0.0], 0.2, 0.0),

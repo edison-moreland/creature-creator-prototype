@@ -5,7 +5,7 @@ use metal::{
     MTLVertexStepFunction, NSUInteger, RenderCommandEncoderRef, RenderPipelineDescriptor,
     RenderPipelineState, VertexAttributeDescriptor, VertexBufferLayoutDescriptor, VertexDescriptor,
 };
-use nalgebra::Vector3;
+use nalgebra::{Point3, Vector3};
 
 use crate::renderer::shared::Shared;
 use crate::renderer::uniforms::Uniforms;
@@ -37,16 +37,16 @@ pub struct LineSegment {
 
 impl LineSegment {
     pub fn new(
-        a: Vector3<f32>,
-        b: Vector3<f32>,
+        a: Point3<f32>,
+        b: Point3<f32>,
         color: Vector3<f32>,
         thickness: f32,
         segment_size: f32,
         style: u32,
     ) -> Self {
         Self {
-            start: a.data.0[0],
-            end: b.data.0[0],
+            start: a.coords.data.0[0],
+            end: b.coords.data.0[0],
             color: color.data.0[0],
             thickness,
             segment_size,

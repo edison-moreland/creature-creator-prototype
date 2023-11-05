@@ -1,7 +1,6 @@
 use std::time::Instant;
 
-use nalgebra::{point, vector};
-use renderer::surfaces::Sphere;
+use nalgebra::{point, vector, Transform3};
 use winit::dpi::{LogicalSize, PhysicalSize};
 use winit::event::StartCause;
 use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
@@ -13,12 +12,13 @@ use winit::{
     window::WindowBuilder,
 };
 
+use renderer::surfaces::Sphere;
+
 use crate::renderer::widgets::{CardinalArrows, Grid, Widget};
 use crate::renderer::{Camera, Renderer};
-use crate::surfaces::primitives::{sphere, translate};
-use crate::surfaces::relaxation::RelaxationSystem;
-use crate::surfaces::sampling::sample;
-use crate::surfaces::{seed, Surface, SurfaceFn};
+use crate::surfaces::initial_sampling::sample;
+use crate::surfaces::live_sampling::SamplingSystem;
+use crate::surfaces::{Shape, Surface};
 
 mod buffer_allocator;
 mod plane;
@@ -26,27 +26,34 @@ mod renderer;
 mod spatial_indexer;
 mod surfaces;
 
-fn surface() -> impl Surface + Widget {
-    SurfaceFn::new(|t, p| translate(vector![0.0, t.sin() * 2.0, 0.0], sphere(10.0))(p))
+fn surface() -> Surface {
+    let mut s = Surface::new();
+
+    s.push(
+        Transform3::identity(),
+        Shape::Ellipsoid(vector![10.0, 10.0, 10.0]),
+    );
+
+    s
 }
 
-struct App<S> {
+struct App {
     #[allow(dead_code)] // Window is never used after initialization but it can't be dropped
     window: Window,
 
     renderer: Renderer,
 
     desired_radius: f32,
-    particle_system: RelaxationSystem,
+    particle_system: SamplingSystem,
 
-    surface: S,
+    surface: Surface,
 
     grid: Grid,
     arrows: CardinalArrows,
 }
 
-impl<S: Surface + Widget> App<S> {
-    fn init(event_loop: &EventLoopWindowTarget<()>, surface: S) -> Self {
+impl App {
+    fn init(event_loop: &EventLoopWindowTarget<()>, surface: Surface) -> Self {
         let window = WindowBuilder::new()
             .with_title("Creature Creator")
             .with_inner_size(LogicalSize::new(800, 600))
@@ -61,18 +68,13 @@ impl<S: Surface + Widget> App<S> {
         let sample_radius = 0.5;
 
         println!("Initial sampling...");
-        let seed = match surface.sample_point() {
-            Some(p) => p,
-            None => seed(&surface, 0.0),
-        };
-
-        let points = sample(&surface, seed, sample_radius);
+        let points = sample(&surface, sample_radius);
 
         println!("Done! Initializing particle system...");
-        let particle_system = RelaxationSystem::new(points, sample_radius, &surface);
+        let particle_system = SamplingSystem::new(points, sample_radius, &surface);
 
         let grid = Grid::new(100.0, 5.0);
-        let arrows = CardinalArrows::new(vector![0.0, 0.05, 0.0], 25.0);
+        let arrows = CardinalArrows::new(point![0.0, 0.05, 0.0], 25.0);
 
         App {
             window,
@@ -105,7 +107,7 @@ impl<S: Surface + Widget> App<S> {
             self.particle_system
                 .positions()
                 .map(|(point, normal, radius)| Sphere {
-                    center: point.data.0[0],
+                    center: point.coords.data.0[0],
                     normal: normal.data.0[0],
                     radius,
                 })
@@ -115,7 +117,7 @@ impl<S: Surface + Widget> App<S> {
 
         self.renderer.draw_widget(&self.grid);
         self.renderer.draw_widget(&self.arrows);
-        self.renderer.draw_widget(&self.surface);
+        // self.renderer.draw_widget(&self.surface);
         self.renderer.commit();
 
         let r_duration = start.elapsed();

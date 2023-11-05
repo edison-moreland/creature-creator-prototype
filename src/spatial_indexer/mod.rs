@@ -1,13 +1,13 @@
-use nalgebra::Vector3;
+use nalgebra::Point3;
 
 pub mod kd_indexer;
 
 pub trait Positioned {
-    fn position(&self) -> Vector3<f32>;
+    fn position(&self) -> Point3<f32>;
 }
 
-impl Positioned for Vector3<f32> {
-    fn position(&self) -> Vector3<f32> {
+impl Positioned for Point3<f32> {
+    fn position(&self) -> Point3<f32> {
         *self
     }
 }
@@ -24,8 +24,8 @@ pub trait SpatialIndexer<P: Positioned> {
     fn remove_item_index(&mut self, items: &[P], index: usize);
 
     // get_indices_within will return the index of all items within `radius` of `origin`
-    fn get_indices_within(&self, items: &[P], origin: Vector3<f32>, radius: f32) -> Vec<usize>;
+    fn get_indices_within(&self, items: &[P], origin: Point3<f32>, radius: f32) -> Vec<usize>;
 
     // any_indices_within will return true if there any items within `radius` of `origin`
-    fn any_indices_within(&self, items: &[P], origin: Vector3<f32>, radius: f32) -> bool;
+    fn any_indices_within(&self, items: &[P], origin: Point3<f32>, radius: f32) -> bool;
 }

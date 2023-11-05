@@ -1,4 +1,4 @@
-use nalgebra::Vector3;
+use nalgebra::{Point3, Vector3};
 
 use crate::plane::Plane;
 use crate::renderer::widgets::pipeline::LineSegment;
@@ -22,16 +22,16 @@ impl Style {
 
 pub enum Stroke {
     Line {
-        start: Vector3<f32>,
-        end: Vector3<f32>,
+        start: Point3<f32>,
+        end: Point3<f32>,
     },
     Arrow {
-        origin: Vector3<f32>,
+        origin: Point3<f32>,
         direction: Vector3<f32>,
         magnitude: f32,
     },
     Circle {
-        origin: Vector3<f32>,
+        origin: Point3<f32>,
         normal: Vector3<f32>,
         radius: f32,
     },
