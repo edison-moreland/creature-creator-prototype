@@ -1,15 +1,13 @@
-use std::f32::consts::PI;
-use std::mem::size_of;
-
+use crate::renderer::shared::Shared;
+use crate::renderer::uniforms::Uniforms;
 use metal::{
     DepthStencilStateRef, DeviceRef, MTLPixelFormat, MTLPrimitiveType, MTLVertexFormat,
     MTLVertexStepFunction, NSUInteger, RenderCommandEncoderRef, RenderPipelineDescriptor,
     RenderPipelineState, VertexAttributeDescriptor, VertexBufferLayoutDescriptor, VertexDescriptor,
 };
 use nalgebra::Vector3;
-
-use crate::renderer::shared::Shared;
-use crate::renderer::uniforms::Uniforms;
+use std::f32::consts::PI;
+use std::mem::size_of;
 
 const SPHERE_SLICES: f32 = 16.0 / 2.0;
 const SPHERE_RINGS: f32 = 16.0 / 2.0;
@@ -41,7 +39,7 @@ impl Sphere {
     }
 }
 
-pub struct SpherePipeline {
+pub struct SurfacePipeline {
     pipeline: RenderPipelineState,
 
     instance_count: usize,
@@ -87,7 +85,7 @@ fn sphere_vertices(rings: f32, slices: f32) -> [Vertex; SPHERE_VERTEX_COUNT] {
 }
 
 // Initialization
-impl SpherePipeline {
+impl SurfacePipeline {
     fn new_pipeline(device: &DeviceRef) -> RenderPipelineState {
         let library = device
             .new_library_with_data(SPHERE_SHADER_LIBRARY)
@@ -203,7 +201,7 @@ impl SpherePipeline {
 }
 
 // Drawing
-impl SpherePipeline {
+impl SurfacePipeline {
     pub fn draw_spheres(&mut self, spheres: &[Sphere]) {
         let instance_count = spheres.len();
         if instance_count > MAX_INSTANCE_COUNT {

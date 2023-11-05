@@ -1,8 +1,9 @@
 use std::time::Instant;
 
-use nalgebra::{point, vector, Vector3};
+use nalgebra::{point, vector};
+use renderer::surfaces::Sphere;
 use winit::dpi::{LogicalSize, PhysicalSize};
-use winit::event::{KeyEvent, StartCause};
+use winit::event::StartCause;
 use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
 use winit::keyboard::{Key, NamedKey};
 use winit::window::Window;
@@ -14,10 +15,8 @@ use winit::{
 
 use crate::relaxation::RelaxationSystem;
 use crate::renderer::widgets::{CardinalArrows, Grid, Widget};
-use crate::renderer::{Camera, Renderer, Sphere};
+use crate::renderer::{Camera, Renderer};
 use crate::sampling::sample;
-use crate::surfaces::body::Core;
-use crate::surfaces::limb::Limb;
 use crate::surfaces::primitives::{sphere, translate};
 use crate::surfaces::{seed, Surface, SurfaceFn};
 

@@ -15,14 +15,13 @@ use winit::window::Window;
 use uniforms::Uniforms;
 
 use crate::renderer::shared::Shared;
-pub use crate::renderer::sphere_pipeline::Sphere;
-use crate::renderer::sphere_pipeline::SpherePipeline;
 pub use crate::renderer::uniforms::Camera;
 use crate::renderer::widgets::pipeline::WidgetPipeline;
 use crate::renderer::widgets::Widget;
+use surfaces::{Sphere, SurfacePipeline};
 
 mod shared;
-mod sphere_pipeline;
+pub mod surfaces;
 mod uniforms;
 pub mod widgets;
 
@@ -82,7 +81,7 @@ pub struct Renderer {
     camera: Camera,
     uniforms: Shared<Uniforms>,
 
-    sphere_pipeline: SpherePipeline,
+    sphere_pipeline: SurfacePipeline,
     widget_pipeline: WidgetPipeline,
 }
 
@@ -101,7 +100,7 @@ impl Renderer {
         camera.aspect_ratio_updated(size.width as f32 / size.height as f32);
         let uniforms = Shared::new(&device, Uniforms::new(&camera));
 
-        let sphere_pipeline = SpherePipeline::new(&device);
+        let sphere_pipeline = SurfacePipeline::new(&device);
 
         let widget_pipeline = WidgetPipeline::new(&device);
 
