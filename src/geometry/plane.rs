@@ -1,6 +1,6 @@
 use std::f32::consts::PI;
 
-use nalgebra::{point, vector, Point2, Point3, Vector3};
+use nalgebra::{point, Point2, Point3, vector, Vector3};
 
 pub struct Plane {
     o: Point3<f32>,

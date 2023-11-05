@@ -3,8 +3,8 @@ use std::f64::consts::PI;
 use nalgebra::{point, Point3};
 
 use crate::geometry::Plane;
+use crate::renderer::surfaces::{gradient, on_surface, seed, Surface};
 use crate::spatial_indexer::kd_indexer::KdContainer;
-use crate::surfaces::{gradient, on_surface, seed, Surface};
 
 // Use a technique similar to Delauany triangles to get a fast initial sampling of the entire surface
 // Citation:

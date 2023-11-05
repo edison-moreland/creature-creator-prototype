@@ -1,4 +1,4 @@
-use nalgebra::{point, vector, Point3};
+use nalgebra::{point, Point3, vector};
 
 use crate::renderer::widgets::strokes::{Stroke, StrokeSet, Style};
 

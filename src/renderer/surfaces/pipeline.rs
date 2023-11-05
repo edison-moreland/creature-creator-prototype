@@ -1,14 +1,16 @@
 use std::f32::consts::PI;
 use std::mem::size_of;
+use std::time::Instant;
 
 use metal::{
     DepthStencilStateRef, DeviceRef, MTLPixelFormat, MTLPrimitiveType, MTLVertexFormat,
     MTLVertexStepFunction, NSUInteger, RenderCommandEncoderRef, RenderPipelineDescriptor,
     RenderPipelineState, VertexAttributeDescriptor, VertexBufferLayoutDescriptor, VertexDescriptor,
 };
-use nalgebra::Vector3;
 
 use crate::renderer::shared::Shared;
+use crate::renderer::surfaces::sampling::SamplingSystem;
+use crate::renderer::surfaces::Surface;
 use crate::renderer::uniforms::Uniforms;
 
 const SPHERE_SLICES: f32 = 16.0 / 2.0;
@@ -31,18 +33,10 @@ pub struct Sphere {
     pub normal: [f32; 3],
 }
 
-impl Sphere {
-    pub fn new(center: Vector3<f32>, normal: Vector3<f32>, radius: f32) -> Self {
-        Self {
-            center: center.data.0[0],
-            radius,
-            normal: normal.data.0[0],
-        }
-    }
-}
-
 pub struct SurfacePipeline {
     pipeline: RenderPipelineState,
+
+    sampling_system: SamplingSystem,
 
     instance_count: usize,
     instances: Shared<[Sphere; MAX_INSTANCE_COUNT]>,
@@ -195,6 +189,7 @@ impl SurfacePipeline {
     pub fn new(device: &DeviceRef) -> Self {
         Self {
             pipeline: Self::new_pipeline(device),
+            sampling_system: SamplingSystem::new(),
             instance_count: 0,
             instances: Self::new_instance_buffer(device),
             vertices: Self::new_vertices_buffer(device),
@@ -204,16 +199,37 @@ impl SurfacePipeline {
 
 // Drawing
 impl SurfacePipeline {
-    pub fn draw_spheres(&mut self, spheres: &[Sphere]) {
-        let instance_count = spheres.len();
-        if instance_count > MAX_INSTANCE_COUNT {
-            panic!("HEY THAT:S TOO BIG!!! HEY !!")
+    pub fn draw_surface(&mut self, surface: &Surface, sample_radius: f32) {
+        let start = Instant::now();
+
+        self.sampling_system.update(sample_radius, surface);
+
+        let mut max_i = 0;
+        for (i, (position, normal, radius)) in self.sampling_system.positions().enumerate() {
+            self.instances[i] = Sphere {
+                center: position.coords.data.0[0],
+                radius,
+                normal: normal.data.0[0],
+            };
+
+            max_i = i
         }
 
-        self.instance_count = instance_count;
-        self.instances[0..instance_count].copy_from_slice(spheres);
+        self.instance_count = max_i + 1;
+        let sampling_duration = start.elapsed();
+        dbg!(sampling_duration);
     }
 
+    // pub fn draw_spheres(&mut self, spheres: &[Sphere]) {
+    //     let instance_count = spheres.len();
+    //     if instance_count > MAX_INSTANCE_COUNT {
+    //         panic!("HEY THAT:S TOO BIG!!! HEY !!")
+    //     }
+    //
+    //     self.instance_count = instance_count;
+    //     self.instances[0..instance_count].copy_from_slice(spheres);
+    // }
+    //
     pub fn reset(&mut self) {
         self.instance_count = 0; // Mostly here for consistency
     }

@@ -1,28 +1,24 @@
 use std::time::Instant;
 
-use nalgebra::{point, vector, Transform3};
-use winit::dpi::{LogicalSize, PhysicalSize};
-use winit::event::StartCause;
-use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
-use winit::keyboard::{Key, NamedKey};
-use winit::window::Window;
+use nalgebra::{point, Transform3, vector};
 use winit::{
     event::{Event, WindowEvent},
     event_loop::EventLoop,
     window::WindowBuilder,
 };
+use winit::dpi::{LogicalSize, PhysicalSize};
+use winit::event::StartCause;
+use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
+use winit::keyboard::{Key, NamedKey};
+use winit::window::Window;
 
-use renderer::surfaces::Sphere;
-
-use crate::renderer::widgets::{CardinalArrows, Grid};
 use crate::renderer::{Camera, Renderer};
-use crate::surfaces::live_sampling::SamplingSystem;
-use crate::surfaces::{Shape, Surface};
+use crate::renderer::surfaces::{Shape, Surface};
+use crate::renderer::widgets::{CardinalArrows, Grid};
 
 mod geometry;
 mod renderer;
 mod spatial_indexer;
-mod surfaces;
 
 fn surface() -> Surface {
     let mut s = Surface::new();
@@ -41,8 +37,7 @@ struct App {
 
     renderer: Renderer,
 
-    desired_radius: f32,
-    sampling_system: SamplingSystem,
+    sample_radius: f32,
 
     surface: Surface,
 
@@ -63,18 +58,12 @@ impl App {
             Camera::new(point![40.0, 40.0, 40.0], point![0.0, 0.0, 0.0], 60.0),
         );
 
-        let sampling_system = SamplingSystem::new();
-
-        let grid = Grid::new(100.0, 5.0);
-        let arrows = CardinalArrows::new(point![0.0, 0.05, 0.0], 25.0);
-
         App {
             window,
             renderer,
-            desired_radius: 0.5,
-            sampling_system,
-            grid,
-            arrows,
+            sample_radius: 0.5,
+            grid: Grid::new(100.0, 5.0),
+            arrows: CardinalArrows::new(point![0.0, 0.05, 0.0], 25.0),
             surface,
         }
     }
@@ -89,32 +78,15 @@ impl App {
 
     fn draw(&mut self) {
         let start = Instant::now();
-        self.sampling_system
-            .update(self.desired_radius, &self.surface);
-        let p_duration = start.elapsed();
 
-        let start = Instant::now();
-
-        self.renderer.draw_spheres(
-            self.sampling_system
-                .positions()
-                .map(|(point, normal, radius)| Sphere {
-                    center: point.coords.data.0[0],
-                    normal: normal.data.0[0],
-                    radius,
-                })
-                .collect::<Vec<Sphere>>()
-                .as_slice(),
-        );
-
+        self.renderer
+            .draw_surface(&self.surface, self.sample_radius);
         self.renderer.draw_widget(&self.grid);
         self.renderer.draw_widget(&self.arrows);
-        // self.renderer.draw_widget(&self.surface);
         self.renderer.commit();
 
-        let r_duration = start.elapsed();
-
-        dbg!(p_duration, r_duration);
+        let draw_duration = start.elapsed();
+        dbg!(draw_duration);
     }
 }
 

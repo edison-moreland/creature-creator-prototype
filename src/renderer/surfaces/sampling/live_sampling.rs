@@ -3,11 +3,13 @@ use std::ops::Neg;
 
 use nalgebra::{point, vector, Point3, Vector3};
 
+use crate::renderer::surfaces::sampling::buffer_allocator::{
+    BufferAllocator, StackBufferAllocator,
+};
+use crate::renderer::surfaces::sampling::initial_sampling::sample;
+use crate::renderer::surfaces::{gradient, Surface};
 use crate::spatial_indexer::kd_indexer::KdIndexer;
 use crate::spatial_indexer::{Positioned, SpatialIndexer};
-use crate::surfaces::buffer_allocator::{BufferAllocator, StackBufferAllocator};
-use crate::surfaces::initial_sampling::sample;
-use crate::surfaces::{gradient, Surface};
 
 // Using Particles to Sample and Control Implicit Surfaces.
 // Andrew P. Witkin, Paul S. Heckbert

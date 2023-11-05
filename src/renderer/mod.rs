@@ -1,21 +1,22 @@
 use cocoa::appkit::NSView;
 use cocoa::base::id;
 use core_graphics_types::geometry::CGSize;
-use metal::objc::runtime::YES;
 use metal::{
-    CommandQueue, DepthStencilDescriptor, DepthStencilState, Device, DeviceRef, MTLClearColor,
-    MTLCompareFunction, MTLLoadAction, MTLPixelFormat, MTLStorageMode, MTLStoreAction,
-    MTLTextureUsage, MetalDrawableRef, MetalLayer, RenderCommandEncoderRef, Texture,
+    CommandQueue, DepthStencilDescriptor, DepthStencilState, Device, DeviceRef, MetalDrawableRef,
+    MetalLayer, MTLClearColor, MTLCompareFunction, MTLLoadAction, MTLPixelFormat,
+    MTLStorageMode, MTLStoreAction, MTLTextureUsage, RenderCommandEncoderRef, Texture,
     TextureDescriptor,
 };
+use metal::objc::runtime::YES;
 use winit::dpi::PhysicalSize;
 use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
 use winit::window::Window;
 
-use surfaces::{Sphere, SurfacePipeline};
+use surfaces::SurfacePipeline;
 use uniforms::Uniforms;
 
 use crate::renderer::shared::Shared;
+use crate::renderer::surfaces::Surface;
 pub use crate::renderer::uniforms::Camera;
 use crate::renderer::widgets::pipeline::WidgetPipeline;
 use crate::renderer::widgets::Widget;
@@ -132,8 +133,8 @@ impl Renderer {
         self.layer.set_contents_scale(scale_factor);
     }
 
-    pub fn draw_spheres(&mut self, spheres: &[Sphere]) {
-        self.sphere_pipeline.draw_spheres(spheres);
+    pub fn draw_surface(&mut self, surface: &Surface, sample_radius: f32) {
+        self.sphere_pipeline.draw_surface(surface, sample_radius);
     }
 
     pub fn draw_widget(&mut self, widget: &dyn Widget) {
