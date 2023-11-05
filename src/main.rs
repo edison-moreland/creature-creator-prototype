@@ -16,7 +16,6 @@ use renderer::surfaces::Sphere;
 
 use crate::renderer::widgets::{CardinalArrows, Grid, Widget};
 use crate::renderer::{Camera, Renderer};
-use crate::surfaces::initial_sampling::sample;
 use crate::surfaces::live_sampling::SamplingSystem;
 use crate::surfaces::{Shape, Surface};
 
@@ -44,7 +43,7 @@ struct App {
     renderer: Renderer,
 
     desired_radius: f32,
-    particle_system: SamplingSystem,
+    sampling_system: SamplingSystem,
 
     surface: Surface,
 
@@ -65,13 +64,7 @@ impl App {
             Camera::new(point![40.0, 40.0, 40.0], point![0.0, 0.0, 0.0], 60.0),
         );
 
-        let sample_radius = 0.5;
-
-        println!("Initial sampling...");
-        let points = sample(&surface, sample_radius);
-
-        println!("Done! Initializing particle system...");
-        let particle_system = SamplingSystem::new(points, sample_radius, &surface);
+        let sampling_system = SamplingSystem::new(0.5, &surface);
 
         let grid = Grid::new(100.0, 5.0);
         let arrows = CardinalArrows::new(point![0.0, 0.05, 0.0], 25.0);
@@ -80,7 +73,7 @@ impl App {
             window,
             renderer,
             desired_radius: 0.5,
-            particle_system,
+            sampling_system,
             grid,
             arrows,
             surface,
@@ -97,14 +90,14 @@ impl App {
 
     fn draw(&mut self) {
         let start = Instant::now();
-        self.particle_system
+        self.sampling_system
             .update(self.desired_radius, &self.surface);
         let p_duration = start.elapsed();
 
         let start = Instant::now();
 
         self.renderer.draw_spheres(
-            self.particle_system
+            self.sampling_system
                 .positions()
                 .map(|(point, normal, radius)| Sphere {
                     center: point.coords.data.0[0],

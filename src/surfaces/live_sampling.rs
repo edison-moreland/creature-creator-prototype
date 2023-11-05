@@ -6,6 +6,7 @@ use nalgebra::{point, vector, Point3, Vector3};
 use crate::buffer_allocator::{BufferAllocator, StackBufferAllocator};
 use crate::spatial_indexer::kd_indexer::KdIndexer;
 use crate::spatial_indexer::{Positioned, SpatialIndexer};
+use crate::surfaces::initial_sampling::sample;
 use crate::surfaces::{gradient, Surface};
 
 const REPULSION_AMPLITUDE: f32 = 6.0;
@@ -87,7 +88,12 @@ pub struct SamplingSystem {
 }
 
 impl SamplingSystem {
-    pub fn new(positions: Vec<Point3<f32>>, sample_radius: f32, surface: &Surface) -> Self {
+    pub fn new(sample_radius: f32, surface: &Surface) -> Self {
+        println!("Initial sampling...");
+        let positions = sample(surface, sample_radius);
+
+        println!("Done! Initializing particle system...");
+
         if positions.len() > MAX_PARTICLE_COUNT {
             panic!("TOO DANG BIG!!")
         }
