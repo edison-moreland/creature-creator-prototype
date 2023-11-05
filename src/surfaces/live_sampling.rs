@@ -9,6 +9,10 @@ use crate::surfaces::buffer_allocator::{BufferAllocator, StackBufferAllocator};
 use crate::surfaces::initial_sampling::sample;
 use crate::surfaces::{gradient, Surface};
 
+// Using Particles to Sample and Control Implicit Surfaces.
+// Andrew P. Witkin, Paul S. Heckbert
+// https://dl.acm.org/doi/pdf/10.1145/192161.192227
+
 const REPULSION_AMPLITUDE: f32 = 6.0;
 const FEEDBACK: f32 = 15.0;
 const NEIGHBOUR_RADIUS: f32 = 3.0;
