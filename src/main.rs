@@ -14,7 +14,7 @@ use winit::{
 
 use renderer::surfaces::Sphere;
 
-use crate::renderer::widgets::{CardinalArrows, Grid, Widget};
+use crate::renderer::widgets::{CardinalArrows, Grid};
 use crate::renderer::{Camera, Renderer};
 use crate::surfaces::live_sampling::SamplingSystem;
 use crate::surfaces::{Shape, Surface};

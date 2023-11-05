@@ -12,13 +12,13 @@ use winit::dpi::PhysicalSize;
 use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
 use winit::window::Window;
 
+use surfaces::{Sphere, SurfacePipeline};
 use uniforms::Uniforms;
 
 use crate::renderer::shared::Shared;
 pub use crate::renderer::uniforms::Camera;
 use crate::renderer::widgets::pipeline::WidgetPipeline;
 use crate::renderer::widgets::Widget;
-use surfaces::{Sphere, SurfacePipeline};
 
 mod shared;
 pub mod surfaces;

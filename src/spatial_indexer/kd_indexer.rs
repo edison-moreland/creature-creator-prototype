@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 use std::ops::Index;
 
-use nalgebra::{Point3, Vector3};
+use nalgebra::Point3;
 
 use crate::spatial_indexer::{Positioned, SpatialIndexer};
 
@@ -176,7 +176,7 @@ fn _any_indices_within<T: Positioned + Debug>(
     match tree {
         KdTree::Leaf(l) => {
             for point in l {
-                if (item_arena[*point].position() - &origin).magnitude() <= radius {
+                if (item_arena[*point].position() - origin).magnitude() <= radius {
                     return true;
                 }
             }
@@ -205,7 +205,7 @@ fn _get_indices_within<T: Positioned + Debug>(
         KdTree::Leaf(l) => {
             items.extend(
                 l.iter()
-                    .filter(|i| (item_arena[**i].position() - &origin).magnitude() <= radius),
+                    .filter(|i| (item_arena[**i].position() - origin).magnitude() <= radius),
             );
         }
         KdTree::Node(n) => {

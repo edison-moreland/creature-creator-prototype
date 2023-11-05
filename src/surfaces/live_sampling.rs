@@ -3,9 +3,9 @@ use std::ops::Neg;
 
 use nalgebra::{point, vector, Point3, Vector3};
 
-use crate::surfaces::buffer_allocator::{BufferAllocator, StackBufferAllocator};
 use crate::spatial_indexer::kd_indexer::KdIndexer;
 use crate::spatial_indexer::{Positioned, SpatialIndexer};
+use crate::surfaces::buffer_allocator::{BufferAllocator, StackBufferAllocator};
 use crate::surfaces::initial_sampling::sample;
 use crate::surfaces::{gradient, Surface};
 
@@ -35,7 +35,6 @@ fn energy_contribution(i_repulsion_radius: f32, i: Point3<f32>, j: Point3<f32>) 
 
 fn constrain_to_surface(
     surface: &Surface,
-    t: f32,
     position: Point3<f32>,
     normal: Vector3<f32>,
     velocity: Vector3<f32>,
@@ -210,7 +209,6 @@ impl SamplingSystem {
 
                 let velocity = constrain_to_surface(
                     surface,
-                    self.t,
                     particle.position,
                     particle.normal,
                     self.particle_velocity(particle.position, particle.radius, &neighbours),

@@ -1,13 +1,15 @@
-use crate::renderer::shared::Shared;
-use crate::renderer::uniforms::Uniforms;
+use std::f32::consts::PI;
+use std::mem::size_of;
+
 use metal::{
     DepthStencilStateRef, DeviceRef, MTLPixelFormat, MTLPrimitiveType, MTLVertexFormat,
     MTLVertexStepFunction, NSUInteger, RenderCommandEncoderRef, RenderPipelineDescriptor,
     RenderPipelineState, VertexAttributeDescriptor, VertexBufferLayoutDescriptor, VertexDescriptor,
 };
 use nalgebra::Vector3;
-use std::f32::consts::PI;
-use std::mem::size_of;
+
+use crate::renderer::shared::Shared;
+use crate::renderer::uniforms::Uniforms;
 
 const SPHERE_SLICES: f32 = 16.0 / 2.0;
 const SPHERE_RINGS: f32 = 16.0 / 2.0;

@@ -1,6 +1,6 @@
 use nalgebra::{Point3, Vector3};
 
-use crate::geometry::plane::Plane;
+use crate::geometry::Plane;
 use crate::renderer::widgets::pipeline::LineSegment;
 
 pub struct Style {
