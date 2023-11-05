@@ -63,7 +63,7 @@ impl App {
             Camera::new(point![40.0, 40.0, 40.0], point![0.0, 0.0, 0.0], 60.0),
         );
 
-        let sampling_system = SamplingSystem::new(0.5, &surface);
+        let sampling_system = SamplingSystem::new();
 
         let grid = Grid::new(100.0, 5.0);
         let arrows = CardinalArrows::new(point![0.0, 0.05, 0.0], 25.0);

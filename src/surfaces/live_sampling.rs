@@ -91,48 +91,53 @@ pub struct SamplingSystem {
 }
 
 impl SamplingSystem {
-    pub fn new(sample_radius: f32, surface: &Surface) -> Self {
-        println!("Initial sampling...");
-        let positions = sample(surface, sample_radius);
-
-        println!("Done! Initializing particle system...");
-
-        if positions.len() > MAX_PARTICLE_COUNT {
-            panic!("TOO DANG BIG!!")
-        }
-
-        let mut particles = [Particle {
+    pub fn new() -> Self {
+        let particles = [Particle {
             position: point![0.0, 0.0, 0.0],
             velocity: vector![0.0, 0.0, 0.0],
             normal: vector![0.0, 0.0, 0.0],
-            radius: sample_radius,
+            radius: 0.0,
         }; MAX_PARTICLE_COUNT];
 
-        let mut index_allocator = StackBufferAllocator::new();
-
-        let mut living_particles = vec![];
-
-        for p in positions {
-            let i = index_allocator.insert();
-
-            particles[i].position = p;
-            particles[i].normal = gradient(surface, p).normalize();
-            living_particles.push(i)
-        }
-
-        let mut position_index = KdIndexer::new();
-        position_index.reindex(&particles, living_particles.clone());
-
         SamplingSystem {
-            living_particles,
-            position_index,
-            index_allocator,
+            living_particles: vec![],
+            position_index: KdIndexer::new(),
+            index_allocator: StackBufferAllocator::new(),
 
             particles_a: particles,
             particles_b: particles,
 
             t: 0.0,
         }
+    }
+
+    fn initial_sampling(&mut self, desired_radius: f32, surface: &Surface) {
+        // The initial sampling isn't taken until the particle system is stepped for the first time
+        // This way we don't need to know what surface we're sampling when the particle system is allocated
+        println!("Initial sampling...");
+        let positions = sample(surface, desired_radius);
+        if positions.len() > MAX_PARTICLE_COUNT {
+            panic!("TOO DANG BIG!!")
+        }
+
+        for p in positions {
+            let normal = gradient(surface, p).normalize();
+
+            let i = self.index_allocator.insert();
+            self.living_particles.push(i);
+
+            self.particles_a[i].position = p;
+            self.particles_a[i].normal = normal;
+            self.particles_a[i].radius = desired_radius;
+            self.particles_b[i].position = p;
+            self.particles_b[i].normal = normal;
+            self.particles_b[i].radius = desired_radius;
+        }
+
+        let mut position_index = KdIndexer::new();
+        position_index.reindex(&self.particles_a, self.living_particles.clone());
+
+        println!("Done!")
     }
 
     pub fn positions(
@@ -145,6 +150,10 @@ impl SamplingSystem {
     }
 
     pub fn update(&mut self, desired_radius: f32, surface: &Surface) {
+        if self.t == 0.0 && self.living_particles.is_empty() {
+            self.initial_sampling(desired_radius, surface)
+        }
+
         for _ in 0..UPDATE_ITERATIONS {
             for j in (0..self.living_particles.len()).rev() {
                 let i = self.living_particles[j];
