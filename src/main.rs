@@ -53,26 +53,20 @@ impl App {
             Camera::new(point![40.0, 40.0, 40.0], point![0.0, 0.0, 0.0], 60.0),
         );
 
-        let mut render_graph = RenderGraph::new();
-        render_graph.insert_under(
-            0,
-            Node::new(Transform3::identity(), Some(Kind::Widget(grid(100.0, 5.0)))),
-        );
-        render_graph.insert_under(
-            0,
-            Node::new(
-                Transform3::identity(),
-                Some(Kind::Widget(cardinal_arrows(point![0.0, 0.0, 0.0], 20.0))),
-            ),
-        );
-
-        render_graph.insert_under(
-            0,
-            Node::new(
-                Transform3::identity(),
-                Some(Kind::Shape(Shape::Ellipsoid(vector![10.0, 10.0, 10.0]))),
-            ),
-        );
+        let render_graph = RenderGraph::new();
+        let mut root_node = render_graph.root();
+        root_node.push(Node::new(
+            Transform3::identity(),
+            Some(Kind::Widget(grid(100.0, 5.0))),
+        ));
+        root_node.push(Node::new(
+            Transform3::identity(),
+            Some(Kind::Widget(cardinal_arrows(20.0))),
+        ));
+        root_node.push(Node::new(
+            Transform3::identity(),
+            Some(Kind::Shape(Shape::Ellipsoid(vector![10.0, 10.0, 10.0]))),
+        ));
 
         App {
             window,

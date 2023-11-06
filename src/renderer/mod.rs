@@ -139,7 +139,7 @@ impl Renderer {
         let mut surface = Surface::new();
 
         graph.walk(|transform, kind| match kind {
-            Kind::Widget(w) => self.widget_pipeline.draw_widget(w),
+            Kind::Widget(w) => self.widget_pipeline.draw_widget(transform, w),
             Kind::Shape(s) => surface.push(transform, *s),
         });
 
