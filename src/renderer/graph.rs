@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use nalgebra::Transform3;
 
-use crate::renderer::surfaces::Shape;
+use crate::renderer::surfaces::{Shape, Surface};
 use crate::renderer::widgets::Widget;
 
 pub enum Kind {
@@ -69,6 +69,27 @@ impl NodeRef {
             nodes: self.nodes.clone(),
             index: child_index,
         }
+    }
+
+    pub fn push_empty(&mut self, transform: Transform3<f32>) -> NodeRef {
+        self.push(Node {
+            transform,
+            kind: None,
+        })
+    }
+
+    pub fn push_widget(&mut self, transform: Transform3<f32>, widget: Widget) -> NodeRef {
+        self.push(Node {
+            transform,
+            kind: Some(Kind::Widget(widget)),
+        })
+    }
+
+    pub fn push_shape(&mut self, transform: Transform3<f32>, shape: Shape) -> NodeRef {
+        self.push(Node {
+            transform,
+            kind: Some(Kind::Shape(shape)),
+        })
     }
 }
 

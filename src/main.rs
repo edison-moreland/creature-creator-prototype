@@ -14,7 +14,7 @@ use winit::{
 
 use crate::renderer::graph::{Kind, Node, RenderGraph};
 use crate::renderer::surfaces::{Shape, Surface};
-use crate::renderer::widgets::{cardinal_arrows, grid};
+use crate::renderer::widgets::{cardinal_arrows, grid, Stroke, Style, Widget};
 use crate::renderer::{Camera, Renderer};
 
 mod geometry;
@@ -55,18 +55,32 @@ impl App {
 
         let render_graph = RenderGraph::new();
         let mut root_node = render_graph.root();
-        root_node.push(Node::new(
+
+        let mut ui_node = root_node.push_empty(Transform3::identity());
+        ui_node.push_widget(Transform3::identity(), grid(100.0, 5.0));
+        ui_node.push_widget(Transform3::identity(), cardinal_arrows(20.0));
+
+        // TODO: How do I pass a god damn translation?
+        let mut character_node = root_node.push_empty(Transform3::identity());
+        character_node.push_shape(
             Transform3::identity(),
-            Some(Kind::Widget(grid(100.0, 5.0))),
-        ));
-        root_node.push(Node::new(
+            Shape::Ellipsoid(vector![10.0, 10.0, 10.0]),
+        );
+        character_node.push_widget(
             Transform3::identity(),
-            Some(Kind::Widget(cardinal_arrows(20.0))),
-        ));
-        root_node.push(Node::new(
-            Transform3::identity(),
-            Some(Kind::Shape(Shape::Ellipsoid(vector![10.0, 10.0, 10.0]))),
-        ));
+            // TODO: \/ this api fucking sucks
+            Widget::new_with(|w| {
+                w.set_palette(vec![Style::new(vector![0.0, 0.0, 0.0], 0.5, 0.0)]);
+                w.stroke(
+                    0,
+                    Stroke::Circle {
+                        origin: point![0.0, 0.0, 0.0],
+                        normal: vector![0.0, 1.0, 0.0],
+                        radius: 10.5,
+                    },
+                )
+            }),
+        );
 
         App {
             window,

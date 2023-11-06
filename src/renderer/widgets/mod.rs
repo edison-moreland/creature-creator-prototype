@@ -19,6 +19,17 @@ impl Widget {
         }
     }
 
+    pub fn new_with<F>(f: F) -> Self
+    where
+        F: FnOnce(&mut Self),
+    {
+        let mut w = Self::new();
+
+        f(&mut w);
+
+        w
+    }
+
     pub fn set_palette(&mut self, styles: Vec<Style>) {
         self.styles = styles
     }
