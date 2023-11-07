@@ -1,9 +1,7 @@
-use generational_arena::Arena;
-use std::cell::RefCell;
 use std::f32::consts::PI;
 use std::ops::{Deref, DerefMut, Mul};
-use std::rc::Rc;
 
+use generational_arena::Arena;
 use nalgebra::{Point3, Similarity3, UnitQuaternion, Vector3};
 
 use crate::renderer::surfaces::Shape;
@@ -32,64 +30,69 @@ impl Node {
 
 type NodeStorage = Arena<(Node, Vec<NodeId>)>;
 
-pub struct NodeRef {
-    nodes: Rc<RefCell<NodeStorage>>,
+pub struct NodeRef<'a> {
+    nodes: &'a NodeStorage,
     id: NodeId,
 }
 
-impl NodeRef {
-    fn with_nodes<F, R>(&self, f: F) -> R
-    where
-        F: FnOnce(&NodeStorage) -> R,
-    {
-        f(&self.nodes.borrow())
+impl<'a> NodeRef<'a> {
+    fn node(&self) -> &(Node, Vec<NodeId>) {
+        &self.nodes[self.id]
     }
-
-    fn with_nodes_mut<F, R>(&mut self, f: F) -> R
-    where
-        F: FnOnce(&mut NodeStorage) -> R,
-    {
-        f(&mut self.nodes.borrow_mut())
+    pub fn node_id(&self) -> NodeId {
+        self.id
     }
-
     pub fn children(&self) -> Vec<NodeRef> {
-        self.with_nodes(|nodes| {
-            nodes[self.id]
-                .1
-                .iter()
-                .map(|i| NodeRef {
-                    nodes: self.nodes.clone(),
-                    id: *i,
-                })
-                .collect()
-        })
+        self.node()
+            .1
+            .iter()
+            .map(|i| NodeRef {
+                nodes: self.nodes,
+                id: *i,
+            })
+            .collect()
+    }
+}
+
+pub struct NodeMut<'a> {
+    nodes: &'a mut NodeStorage,
+    id: NodeId,
+}
+
+impl<'a> NodeMut<'a> {
+    fn node(&mut self) -> &mut (Node, Vec<NodeId>) {
+        &mut self.nodes[self.id]
     }
 
-    pub fn push(&mut self, node: Node) -> NodeRef {
-        let child_index = self.with_nodes_mut(|nodes| nodes.insert((node, vec![])));
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
+    pub fn push(&mut self, node: Node) -> NodeMut {
+        let child_index = self.nodes.insert((node, vec![]));
 
-        self.nodes.borrow_mut()[self.id].1.push(child_index);
+        self.node().1.push(child_index);
 
-        NodeRef {
-            nodes: self.nodes.clone(),
+        NodeMut {
+            nodes: self.nodes,
             id: child_index,
         }
     }
 
-    pub fn push_empty(&mut self) -> NodeRef {
+    pub fn push_empty(&mut self) -> NodeMut {
         self.push(Node::new(None))
     }
 
-    pub fn push_widget(&mut self, widget: Widget) -> NodeRef {
+    pub fn push_widget(&mut self, widget: Widget) -> NodeMut {
         self.push(Node::new(Some(Kind::Widget(widget))))
     }
 
-    pub fn push_shape(&mut self, shape: Shape) -> NodeRef {
+    pub fn push_shape(&mut self, shape: Shape) -> NodeMut {
         self.push(Node::new(Some(Kind::Shape(shape))))
     }
 }
+
 pub struct RenderGraph {
-    nodes: Rc<RefCell<NodeStorage>>,
+    nodes: NodeStorage,
     root: NodeId,
 }
 
@@ -99,16 +102,31 @@ impl RenderGraph {
         let root_id = node_storage.insert((Node::new(None), vec![]));
 
         RenderGraph {
-            nodes: Rc::new(RefCell::new(node_storage)),
+            nodes: node_storage,
             root: root_id,
         }
     }
 
-    pub fn root(&self) -> NodeRef {
+    pub fn node(&self, id: NodeId) -> NodeRef {
         NodeRef {
-            nodes: self.nodes.clone(),
-            id: self.root,
+            nodes: &self.nodes,
+            id,
         }
+    }
+
+    pub fn root(&self) -> NodeRef {
+        self.node(self.root)
+    }
+
+    pub fn node_mut(&mut self, id: NodeId) -> NodeMut {
+        NodeMut {
+            nodes: &mut self.nodes,
+            id,
+        }
+    }
+
+    pub fn root_mut(&mut self) -> NodeMut {
+        self.node_mut(self.root)
     }
 
     pub fn walk<F>(&self, mut f: F)
@@ -118,7 +136,7 @@ impl RenderGraph {
         let mut to_visit = vec![(Transform::identity(), self.root)];
 
         while let Some((previous_transform, index)) = to_visit.pop() {
-            let (node, children) = &self.nodes.borrow()[index];
+            let (node, children) = &self.nodes[index];
 
             let transform = previous_transform * node.transform;
 

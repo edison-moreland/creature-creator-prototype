@@ -53,8 +53,8 @@ impl App {
             Camera::new(point![40.0, 40.0, 40.0], point![0.0, 0.0, 0.0], 60.0),
         );
 
-        let render_graph = RenderGraph::new();
-        let mut root_node = render_graph.root();
+        let mut render_graph = RenderGraph::new();
+        let mut root_node = render_graph.root_mut();
 
         let mut ui_node = root_node.push_empty();
         ui_node.push_widget(grid(100.0, 5.0));
