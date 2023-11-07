@@ -2,7 +2,7 @@ use nalgebra::{Point3, Transform3, Vector3};
 
 use crate::geometry::Plane;
 use crate::renderer::graph::Transform;
-use crate::renderer::widgets::pipeline::LineSegment;
+use crate::renderer::lines::pipeline::LineSegment;
 
 pub struct Style {
     dash_size: f32,

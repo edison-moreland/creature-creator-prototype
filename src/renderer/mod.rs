@@ -16,17 +16,18 @@ use surfaces::SurfacePipeline;
 use uniforms::Uniforms;
 
 use crate::renderer::graph::{Kind, RenderGraph};
+use crate::renderer::lines::pipeline::LinePipeline;
+use crate::renderer::lines::Widget;
 use crate::renderer::shared::Shared;
 use crate::renderer::surfaces::Surface;
 pub use crate::renderer::uniforms::Camera;
-use crate::renderer::widgets::pipeline::WidgetPipeline;
-use crate::renderer::widgets::Widget;
 
 pub mod graph;
+pub mod lines;
 mod shared;
+mod strokes;
 pub mod surfaces;
 mod uniforms;
-pub mod widgets;
 
 fn create_metal_layer(device: &DeviceRef, window: &Window) -> MetalLayer {
     let layer = MetalLayer::new();
@@ -85,7 +86,7 @@ pub struct Renderer {
     uniforms: Shared<Uniforms>,
 
     sphere_pipeline: SurfacePipeline,
-    widget_pipeline: WidgetPipeline,
+    line_pipeline: LinePipeline,
 }
 
 impl Renderer {
@@ -105,7 +106,7 @@ impl Renderer {
 
         let sphere_pipeline = SurfacePipeline::new(&device);
 
-        let widget_pipeline = WidgetPipeline::new(&device);
+        let widget_pipeline = LinePipeline::new(&device);
 
         Renderer {
             device,
@@ -116,7 +117,7 @@ impl Renderer {
             camera,
             uniforms,
             sphere_pipeline,
-            widget_pipeline,
+            line_pipeline: widget_pipeline,
         }
     }
 
@@ -137,14 +138,16 @@ impl Renderer {
 
     pub fn draw_graph(&mut self, surface_sample_radius: f32, graph: &RenderGraph) {
         let mut surface = Surface::new();
+        let mut line_segments = vec![];
 
         graph.walk(|transform, kind| match kind {
-            Kind::Widget(w) => self.widget_pipeline.draw_widget(transform, w),
+            Kind::Widget(w) => w.line_segments(transform, &mut line_segments),
             Kind::Shape(s) => surface.push(transform, *s),
         });
 
         self.sphere_pipeline
-            .draw_surface(&surface, surface_sample_radius)
+            .draw_surface(&surface, surface_sample_radius);
+        self.line_pipeline.draw_line_segments(line_segments)
     }
 
     // pub fn draw_surface(&mut self, surface: &Surface, sample_radius: f32) {
@@ -164,12 +167,12 @@ impl Renderer {
         self.render_pass(drawable, |encoder| {
             self.sphere_pipeline
                 .encode_commands(&self.depth_state, &self.uniforms)(encoder);
-            self.widget_pipeline
+            self.line_pipeline
                 .encode_commands(&self.depth_state, &self.uniforms)(encoder);
         });
 
         self.sphere_pipeline.reset();
-        self.widget_pipeline.reset();
+        self.line_pipeline.reset();
     }
 
     fn render_pass<F>(&self, drawable: &MetalDrawableRef, f: F)

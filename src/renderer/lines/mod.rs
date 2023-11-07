@@ -1,11 +1,10 @@
 use crate::renderer::graph::Transform;
-use nalgebra::{point, vector, Transform3};
+use nalgebra::{point, vector};
 
-use crate::renderer::widgets::pipeline::LineSegment;
-pub use crate::renderer::widgets::strokes::{Stroke, Style};
+use crate::renderer::lines::pipeline::LineSegment;
+pub use crate::renderer::strokes::{Stroke, Style};
 
 pub mod pipeline;
-mod strokes;
 
 pub struct Widget {
     styles: Vec<Style>,

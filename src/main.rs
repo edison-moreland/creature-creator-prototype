@@ -14,7 +14,7 @@ use winit::{
 
 use crate::renderer::graph::{Kind, Node, RenderGraph, Transform};
 use crate::renderer::surfaces::{Shape, Surface};
-use crate::renderer::widgets::{cardinal_arrows, grid, Stroke, Style, Widget};
+use crate::renderer::lines::{cardinal_arrows, grid, Stroke, Style, Widget};
 use crate::renderer::{Camera, Renderer};
 
 mod geometry;

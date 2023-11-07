@@ -5,7 +5,7 @@ use generational_arena::Arena;
 use nalgebra::{Point3, Similarity3, UnitQuaternion, Vector3};
 
 use crate::renderer::surfaces::Shape;
-use crate::renderer::widgets::Widget;
+use crate::renderer::lines::Widget;
 
 type NodeId = generational_arena::Index;
 

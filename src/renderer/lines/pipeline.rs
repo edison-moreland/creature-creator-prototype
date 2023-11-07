@@ -16,7 +16,7 @@ const VERTEX_COUNT: usize = 4;
 // Just a quad
 const STYLE_COUNT: usize = 2;
 const MAX_LINE_SEGMENTS: usize = 1000;
-const WIDGET_SHADER_LIBRARY: &[u8] = include_bytes!("widget_shader.metallib");
+const LINE_SHADER_LIBRARY: &[u8] = include_bytes!("line_shader.metallib");
 
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -56,7 +56,7 @@ impl LineSegment {
     }
 }
 
-pub struct WidgetPipeline {
+pub struct LinePipeline {
     pipeline: RenderPipelineState,
 
     vertices: Shared<[Vertex; VERTEX_COUNT * STYLE_COUNT]>,
@@ -66,10 +66,10 @@ pub struct WidgetPipeline {
 }
 
 // Initialization
-impl WidgetPipeline {
+impl LinePipeline {
     fn new_pipeline(device: &DeviceRef) -> RenderPipelineState {
         let library = device
-            .new_library_with_data(WIDGET_SHADER_LIBRARY)
+            .new_library_with_data(LINE_SHADER_LIBRARY)
             .expect("sphere should load without error");
         let vertex_function = library
             .get_function("vertex_main", None)
@@ -222,10 +222,10 @@ impl WidgetPipeline {
 }
 
 // Drawing
-impl WidgetPipeline {
-    pub fn draw_widget(&mut self, transform: Transform, widget: &Widget) {
-        let mut segments = vec![];
-        widget.line_segments(transform, &mut segments);
+impl LinePipeline {
+    pub fn draw_line_segments(&mut self, segments: Vec<LineSegment>) {
+        // let mut segments = vec![];
+        // widget.line_segments(transform, &mut segments);
         let segment_count = segments.len();
 
         self.segments[self.segment_count..self.segment_count + segment_count]

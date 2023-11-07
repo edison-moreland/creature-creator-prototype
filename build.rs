@@ -4,7 +4,7 @@ use std::process::Command;
 
 fn main() {
     compile_shader(&PathBuf::from("src/renderer/surfaces/sphere_shader.metal"));
-    compile_shader(&PathBuf::from("src/renderer/widgets/widget_shader.metal"));
+    compile_shader(&PathBuf::from("src/renderer/lines/line_shader.metal"));
 }
 
 fn compile_shader(shader_source: &Path) {
