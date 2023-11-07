@@ -1,11 +1,12 @@
 use std::mem::size_of;
 
+use crate::renderer::graph::Transform;
 use metal::{
     DepthStencilStateRef, DeviceRef, MTLPixelFormat, MTLPrimitiveType, MTLVertexFormat,
     MTLVertexStepFunction, NSUInteger, RenderCommandEncoderRef, RenderPipelineDescriptor,
     RenderPipelineState, VertexAttributeDescriptor, VertexBufferLayoutDescriptor, VertexDescriptor,
 };
-use nalgebra::{Point3, Transform3, Vector3};
+use nalgebra::{Point3, Vector3};
 
 use crate::renderer::shared::Shared;
 use crate::renderer::uniforms::Uniforms;
@@ -222,7 +223,7 @@ impl WidgetPipeline {
 
 // Drawing
 impl WidgetPipeline {
-    pub fn draw_widget(&mut self, transform: Transform3<f32>, widget: &Widget) {
+    pub fn draw_widget(&mut self, transform: Transform, widget: &Widget) {
         let mut segments = vec![];
         widget.line_segments(transform, &mut segments);
         let segment_count = segments.len();

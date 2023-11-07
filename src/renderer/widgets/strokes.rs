@@ -1,6 +1,7 @@
 use nalgebra::{Point3, Transform3, Vector3};
 
 use crate::geometry::Plane;
+use crate::renderer::graph::Transform;
 use crate::renderer::widgets::pipeline::LineSegment;
 
 pub struct Style {
@@ -40,15 +41,15 @@ pub enum Stroke {
 impl Stroke {
     pub(crate) fn segments(
         &self,
-        transform: Transform3<f32>,
+        transform: Transform,
         segments: &mut Vec<LineSegment>,
         style: &Style,
     ) {
         match *self {
             Self::Line { start, end } => {
                 segments.push(LineSegment::new(
-                    transform.transform_point(&start),
-                    transform.transform_point(&end),
+                    transform.apply_point(&start),
+                    transform.apply_point(&end),
                     style.color,
                     style.thickness,
                     style.dash_size,
@@ -62,8 +63,8 @@ impl Stroke {
             } => {
                 let segment_count = 24;
                 let points = Plane::from_origin_normal(
-                    transform.transform_point(&origin),
-                    transform.transform_vector(&normal),
+                    transform.apply_point(&origin),
+                    transform.apply_vector(&normal),
                 )
                 .circle_points(segment_count, radius);
 
@@ -85,8 +86,8 @@ impl Stroke {
                 direction,
                 magnitude,
             } => {
-                let start = transform.transform_point(&origin);
-                let end = start + (transform.transform_vector(&direction) * magnitude);
+                let start = transform.apply_point(&origin);
+                let end = start + (transform.apply_vector(&direction) * magnitude);
 
                 let stem_thickness = style.thickness;
                 let arrow_thickness = stem_thickness * 4.0;

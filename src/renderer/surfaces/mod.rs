@@ -1,5 +1,6 @@
 use nalgebra::{point, vector, Matrix4, Point3, Transform3, Vector3};
 
+use crate::renderer::graph::Transform;
 pub use pipeline::SurfacePipeline;
 
 use crate::renderer::surfaces::primitives::ellipsoid;
@@ -22,7 +23,7 @@ impl Surface {
         Self { shapes: vec![] }
     }
 
-    pub fn push(&mut self, transform: Transform3<f32>, shape: Shape) {
+    pub fn push(&mut self, transform: Transform, shape: Shape) {
         self.shapes.push((transform.to_homogeneous(), shape))
     }
 

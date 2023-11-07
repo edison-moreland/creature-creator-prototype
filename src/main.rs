@@ -12,7 +12,7 @@ use winit::{
     window::WindowBuilder,
 };
 
-use crate::renderer::graph::{Kind, Node, RenderGraph};
+use crate::renderer::graph::{Kind, Node, RenderGraph, Transform};
 use crate::renderer::surfaces::{Shape, Surface};
 use crate::renderer::widgets::{cardinal_arrows, grid, Stroke, Style, Widget};
 use crate::renderer::{Camera, Renderer};
@@ -25,7 +25,7 @@ fn surface() -> Surface {
     let mut s = Surface::new();
 
     s.push(
-        Transform3::identity(),
+        Transform::identity(),
         Shape::Ellipsoid(vector![10.0, 10.0, 10.0]),
     );
 
@@ -56,18 +56,13 @@ impl App {
         let render_graph = RenderGraph::new();
         let mut root_node = render_graph.root();
 
-        let mut ui_node = root_node.push_empty(Transform3::identity());
-        ui_node.push_widget(Transform3::identity(), grid(100.0, 5.0));
-        ui_node.push_widget(Transform3::identity(), cardinal_arrows(20.0));
+        let mut ui_node = root_node.push_empty();
+        ui_node.push_widget(grid(100.0, 5.0));
+        ui_node.push_widget(cardinal_arrows(20.0));
 
-        // TODO: How do I pass a god damn translation?
-        let mut character_node = root_node.push_empty(Transform3::identity());
-        character_node.push_shape(
-            Transform3::identity(),
-            Shape::Ellipsoid(vector![10.0, 10.0, 10.0]),
-        );
+        let mut character_node = root_node.push_empty();
+        character_node.push_shape(Shape::Ellipsoid(vector![10.0, 10.0, 10.0]));
         character_node.push_widget(
-            Transform3::identity(),
             // TODO: \/ this api fucking sucks
             Widget::new_with(|w| {
                 w.set_palette(vec![Style::new(vector![0.0, 0.0, 0.0], 0.5, 0.0)]);

@@ -1,3 +1,4 @@
+use crate::renderer::graph::Transform;
 use nalgebra::{point, vector, Transform3};
 
 use crate::renderer::widgets::pipeline::LineSegment;
@@ -38,7 +39,7 @@ impl Widget {
         self.strokes.push((stroke, style))
     }
 
-    pub fn line_segments(&self, transform: Transform3<f32>, segments: &mut Vec<LineSegment>) {
+    pub fn line_segments(&self, transform: Transform, segments: &mut Vec<LineSegment>) {
         for (stroke, style_idx) in &self.strokes {
             stroke.segments(transform, segments, &self.styles[*style_idx])
         }
