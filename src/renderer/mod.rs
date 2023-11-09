@@ -24,7 +24,6 @@ pub use crate::renderer::uniforms::Camera;
 pub mod graph;
 pub mod lines;
 mod shared;
-mod strokes;
 pub mod surfaces;
 mod uniforms;
 

@@ -3,7 +3,6 @@ use nalgebra::{point, vector, Vector3};
 use crate::geometry::Plane;
 use crate::renderer::graph::Transform;
 use crate::renderer::lines::pipeline::LineSegment;
-pub use crate::renderer::strokes::{Stroke, Style};
 
 pub mod pipeline;
 
