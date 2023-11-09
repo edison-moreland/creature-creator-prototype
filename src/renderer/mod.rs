@@ -17,7 +17,6 @@ use uniforms::Uniforms;
 
 use crate::renderer::graph::{Kind, RenderGraph};
 use crate::renderer::lines::pipeline::LinePipeline;
-use crate::renderer::lines::Widget;
 use crate::renderer::shared::Shared;
 use crate::renderer::surfaces::Surface;
 pub use crate::renderer::uniforms::Camera;
@@ -141,7 +140,7 @@ impl Renderer {
         let mut line_segments = vec![];
 
         graph.walk(|transform, kind| match kind {
-            Kind::Widget(w) => w.line_segments(transform, &mut line_segments),
+            Kind::Line(l) => l.line_segments(&mut line_segments, &transform),
             Kind::Shape(s) => surface.push(transform, *s),
         });
 
@@ -149,14 +148,6 @@ impl Renderer {
             .draw_surface(&surface, surface_sample_radius);
         self.line_pipeline.draw_line_segments(line_segments)
     }
-
-    // pub fn draw_surface(&mut self, surface: &Surface, sample_radius: f32) {
-    //     self.sphere_pipeline.draw_surface(surface, sample_radius);
-    // }
-    //
-    // pub fn draw_widget(&mut self, widget: &dyn Widget) {
-    //     self.widget_pipeline.draw_widget(widget);
-    // }
 
     pub fn commit(&mut self) {
         let drawable = match self.layer.next_drawable() {

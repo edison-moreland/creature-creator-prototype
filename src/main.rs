@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use nalgebra::{point, vector, Transform3};
+use nalgebra::{point, vector};
 use winit::dpi::{LogicalSize, PhysicalSize};
 use winit::event::StartCause;
 use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
@@ -12,9 +12,9 @@ use winit::{
     window::WindowBuilder,
 };
 
-use crate::renderer::graph::{Kind, Node, RenderGraph, Transform};
+use crate::renderer::graph::{NodeMut, RenderGraph, Transform};
+use crate::renderer::lines::{Fill, Line};
 use crate::renderer::surfaces::{Shape, Surface};
-use crate::renderer::lines::{cardinal_arrows, grid, Stroke, Style, Widget};
 use crate::renderer::{Camera, Renderer};
 
 mod geometry;
@@ -30,6 +30,54 @@ fn surface() -> Surface {
     );
 
     s
+}
+
+fn grid(mut root: NodeMut, size: f32, step: f32) {
+    let start = -(size / 2.0);
+
+    let mut grid_line_position = start;
+    while grid_line_position <= -start {
+        let mut x_line = root.push_line(Line::new(size, Fill::Solid, 0.1, vector![0.0, 0.0, 0.0]));
+        x_line
+            .transform()
+            .set_position(point![grid_line_position, 0.0, 0.0]);
+        x_line.transform().set_rotation(vector![90.0, 0.0, 0.0]);
+
+        let mut y_line = root.push_line(Line::new(size, Fill::Solid, 0.1, vector![0.0, 0.0, 0.0]));
+        y_line
+            .transform()
+            .set_position(point![0.0, 0.0, grid_line_position]);
+        y_line.transform().set_rotation(vector![0.0, 0.0, 90.0]);
+
+        grid_line_position += step
+    }
+}
+
+fn cardinal_arrows(mut root: NodeMut, magnitude: f32) {
+    root.push_line(Line::new_arrow(
+        magnitude,
+        Fill::Solid,
+        0.2,
+        vector![1.0, 0.0, 0.0],
+    ))
+    .transform()
+    .set_rotation(vector![90.0, 0.0, 0.0]);
+
+    root.push_line(Line::new_arrow(
+        magnitude,
+        Fill::Solid,
+        0.2,
+        vector![0.0, 1.0, 0.0],
+    ));
+
+    root.push_line(Line::new_arrow(
+        magnitude,
+        Fill::Solid,
+        0.2,
+        vector![0.0, 0.0, 1.0],
+    ))
+    .transform()
+    .set_rotation(vector![0.0, 0.0, 90.0]);
 }
 
 struct App {
@@ -57,25 +105,17 @@ impl App {
         let mut root_node = render_graph.root_mut();
 
         let mut ui_node = root_node.push_empty();
-        ui_node.push_widget(grid(100.0, 5.0));
-        ui_node.push_widget(cardinal_arrows(20.0));
+        grid(ui_node.push_empty(), 100.0, 5.0);
+        cardinal_arrows(ui_node.push_empty(), 20.0);
 
         let mut character_node = root_node.push_empty();
         character_node.push_shape(Shape::Ellipsoid(vector![10.0, 10.0, 10.0]));
-        character_node.push_widget(
-            // TODO: \/ this api fucking sucks
-            Widget::new_with(|w| {
-                w.set_palette(vec![Style::new(vector![0.0, 0.0, 0.0], 0.5, 0.0)]);
-                w.stroke(
-                    0,
-                    Stroke::Circle {
-                        origin: point![0.0, 0.0, 0.0],
-                        normal: vector![0.0, 1.0, 0.0],
-                        radius: 10.5,
-                    },
-                )
-            }),
-        );
+        character_node.push_line(Line::new_circle(
+            10.5,
+            Fill::Solid,
+            0.5,
+            vector![0.0, 0.0, 0.0],
+        ));
 
         App {
             window,

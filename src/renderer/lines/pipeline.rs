@@ -1,6 +1,5 @@
 use std::mem::size_of;
 
-use crate::renderer::graph::Transform;
 use metal::{
     DepthStencilStateRef, DeviceRef, MTLPixelFormat, MTLPrimitiveType, MTLVertexFormat,
     MTLVertexStepFunction, NSUInteger, RenderCommandEncoderRef, RenderPipelineDescriptor,
@@ -10,7 +9,6 @@ use nalgebra::{Point3, Vector3};
 
 use crate::renderer::shared::Shared;
 use crate::renderer::uniforms::Uniforms;
-use crate::renderer::Widget;
 
 const VERTEX_COUNT: usize = 4;
 // Just a quad
@@ -224,8 +222,6 @@ impl LinePipeline {
 // Drawing
 impl LinePipeline {
     pub fn draw_line_segments(&mut self, segments: Vec<LineSegment>) {
-        // let mut segments = vec![];
-        // widget.line_segments(transform, &mut segments);
         let segment_count = segments.len();
 
         self.segments[self.segment_count..self.segment_count + segment_count]

@@ -4,13 +4,13 @@ use std::ops::{Deref, DerefMut, Mul};
 use generational_arena::Arena;
 use nalgebra::{Point3, Similarity3, UnitQuaternion, Vector3};
 
+use crate::renderer::lines::Line;
 use crate::renderer::surfaces::Shape;
-use crate::renderer::lines::Widget;
 
 type NodeId = generational_arena::Index;
 
 pub enum Kind {
-    Widget(Widget),
+    Line(Line),
     Shape(Shape),
 }
 
@@ -42,6 +42,9 @@ impl<'a> NodeRef<'a> {
     pub fn node_id(&self) -> NodeId {
         self.id
     }
+    pub fn transform(&self) -> &Transform {
+        &self.node().0.transform
+    }
     pub fn children(&self) -> Vec<NodeRef> {
         self.node()
             .1
@@ -67,6 +70,9 @@ impl<'a> NodeMut<'a> {
     pub fn node_id(&self) -> NodeId {
         self.id
     }
+    pub fn transform(&mut self) -> &mut Transform {
+        &mut self.node().0.transform
+    }
     pub fn push(&mut self, node: Node) -> NodeMut {
         let child_index = self.nodes.insert((node, vec![]));
 
@@ -82,8 +88,8 @@ impl<'a> NodeMut<'a> {
         self.push(Node::new(None))
     }
 
-    pub fn push_widget(&mut self, widget: Widget) -> NodeMut {
-        self.push(Node::new(Some(Kind::Widget(widget))))
+    pub fn push_line(&mut self, line: Line) -> NodeMut {
+        self.push(Node::new(Some(Kind::Line(line))))
     }
 
     pub fn push_shape(&mut self, shape: Shape) -> NodeMut {
@@ -171,7 +177,7 @@ impl Transform {
         Point3::from(self.0.isometry.translation.vector)
     }
 
-    fn set_position(&mut self, new_position: Point3<f32>) {
+    pub fn set_position(&mut self, new_position: Point3<f32>) {
         self.isometry.translation.vector = new_position.coords
     }
 
