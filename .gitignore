@@ -2,3 +2,4 @@
 /.idea
 /character_designer_designer_rs_prototype/
 *.svg
+.DS_Store
