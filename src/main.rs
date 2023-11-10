@@ -12,24 +12,26 @@ use winit::{
     window::WindowBuilder,
 };
 
-use crate::renderer::graph::{NodeMut, RenderGraph, Transform};
+use crate::renderer::graph::{NodeMut, RenderGraph};
 use crate::renderer::lines::{Fill, Line};
-use crate::renderer::surfaces::{Shape, Surface};
+use crate::renderer::surfaces::Shape;
 use crate::renderer::{Camera, Renderer};
 
 mod geometry;
 mod renderer;
 mod spatial_indexer;
 
-fn surface() -> Surface {
-    let mut s = Surface::new();
-
-    s.push(
-        Transform::identity(),
-        Shape::Ellipsoid(vector![10.0, 10.0, 10.0]),
-    );
-
-    s
+fn character(mut character_node: NodeMut) {
+    character_node
+        .transform()
+        .set_position(point![0.0, 10.0, 0.0]);
+    character_node.push_shape(Shape::Ellipsoid(vector![10.0, 10.0, 10.0]));
+    character_node.push_line(Line::new_circle(
+        10.1,
+        Fill::Dashed(0.4),
+        0.2,
+        vector![0.0, 0.0, 0.0],
+    ));
 }
 
 fn grid(mut root: NodeMut, size: f32, step: f32) {
@@ -108,17 +110,7 @@ impl App {
         grid(ui_node.push_empty(), 100.0, 5.0);
         cardinal_arrows(ui_node.push_empty(), 20.0);
 
-        let mut character_node = root_node.push_empty();
-        character_node
-            .transform()
-            .set_position(point![0.0, 10.0, 0.0]);
-        character_node.push_shape(Shape::Ellipsoid(vector![10.0, 10.0, 10.0]));
-        character_node.push_line(Line::new_circle(
-            10.1,
-            Fill::Dashed(0.4),
-            0.2,
-            vector![0.0, 0.0, 0.0],
-        ));
+        character(root_node.push_empty());
 
         App {
             window,
