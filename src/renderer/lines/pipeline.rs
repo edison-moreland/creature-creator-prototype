@@ -32,6 +32,7 @@ pub struct LineSegment {
     segment_size: f32,
     // 0 means no segments
     style: u32,
+    t_offset: f32,
 }
 
 impl LineSegment {
@@ -42,6 +43,7 @@ impl LineSegment {
         thickness: f32,
         segment_size: f32,
         style: u32,
+        t_offset: f32,
     ) -> Self {
         Self {
             start: a.coords.data.0[0],
@@ -50,6 +52,7 @@ impl LineSegment {
             thickness,
             segment_size,
             style,
+            t_offset,
         }
     }
 }
@@ -146,6 +149,14 @@ impl LinePipeline {
             .attributes()
             .set_object_at(5, Some(&style_attribute));
 
+        let t_offset_attribute = VertexAttributeDescriptor::new();
+        t_offset_attribute.set_format(MTLVertexFormat::Float);
+        t_offset_attribute.set_buffer_index(1);
+        t_offset_attribute.set_offset((size_of::<[f32; 11]>() + size_of::<u32>()) as NSUInteger);
+        vertex_descriptor
+            .attributes()
+            .set_object_at(6, Some(&t_offset_attribute));
+
         // Buffer layouts
         let instance_buffer = VertexBufferLayoutDescriptor::new();
         instance_buffer.set_stride(size_of::<LineSegment>() as NSUInteger);
@@ -205,6 +216,7 @@ impl LinePipeline {
                 thickness: 0.0,
                 segment_size: 0.0,
                 style: 0,
+                t_offset: 0.0,
             }; MAX_LINE_SEGMENTS],
         )
     }

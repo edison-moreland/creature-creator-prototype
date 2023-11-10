@@ -111,11 +111,11 @@ impl App {
         let mut character_node = root_node.push_empty();
         character_node
             .transform()
-            .set_position(point![10.0, 10.0, 10.0]);
+            .set_position(point![0.0, 10.0, 0.0]);
         character_node.push_shape(Shape::Ellipsoid(vector![10.0, 10.0, 10.0]));
         character_node.push_line(Line::new_circle(
-            10.5,
-            Fill::Dashed(0.1),
+            10.1,
+            Fill::Dashed(0.4),
             0.2,
             vector![0.0, 0.0, 0.0],
         ));

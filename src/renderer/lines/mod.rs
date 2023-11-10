@@ -85,6 +85,7 @@ impl Line {
             self.thickness,
             self.dash_size(),
             0,
+            0.0,
         ))
     }
 
@@ -112,6 +113,7 @@ impl Line {
                 arrow_thickness,
                 0.0,
                 1,
+                0.0,
             ));
         } else {
             let stem_length = magnitude - arrow_head_length;
@@ -124,6 +126,7 @@ impl Line {
                 stem_thickness,
                 self.dash_size(),
                 0,
+                0.0,
             ));
             segments.push(LineSegment::new(
                 stem_end,
@@ -132,6 +135,7 @@ impl Line {
                 arrow_thickness,
                 0.0,
                 1,
+                0.0,
             ));
         }
     }
@@ -142,24 +146,28 @@ impl Line {
         transform: &Transform,
         radius: f32,
     ) {
-        let segment_count = 24;
+        let segment_count = 24 * 2;
         let points = Plane::from_origin_normal(
             transform.apply_point(&point![0.0, 0.0, 0.0]),
             transform.apply_vector(&vector![0.0, 1.0, 0.0]),
         )
         .circle_points(segment_count, radius);
 
+        let mut length = 0.0;
         for i in 0..segment_count {
             let last_i = if i == 0 { segment_count - 1 } else { i - 1 };
 
             segments.push(LineSegment::new(
-                points[last_i],
                 points[i],
+                points[last_i],
                 self.color,
                 self.thickness,
                 self.dash_size(),
                 0,
+                length,
             ));
+
+            length += (points[i] - points[last_i]).magnitude();
         }
     }
 }

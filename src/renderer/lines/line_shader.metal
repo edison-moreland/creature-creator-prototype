@@ -7,9 +7,10 @@ struct Instance {
     float3 start        [[attribute(0)]];
     float3 end          [[attribute(1)]];
     float3 color        [[attribute(2)]];
-    float thickness    [[attribute(3)]];
-    float segment_size [[attribute(4)]];
-    uint style        [[attribute(5)]];
+    float thickness     [[attribute(3)]];
+    float segment_size  [[attribute(4)]];
+    uint style          [[attribute(5)]];
+    float t_offset      [[attribute(6)]];
 };
 
 struct VertexOut {
@@ -34,9 +35,9 @@ vertex_main(Instance inst [[stage_in]],
     float size = length(inst.start - inst.end);
     float2 vert = geometry[vid + (4 * inst.style)] * (float2(size, inst.thickness) / 2.0);
     
-    float t = 0.0;
+    float t = inst.t_offset;
     if (vert.x > 0) {
-        t = size;
+        t += size;
     }
     
     // Construct a plane facing the camera
