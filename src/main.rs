@@ -61,7 +61,7 @@ fn cardinal_arrows(mut root: NodeMut, magnitude: f32) {
         vector![1.0, 0.0, 0.0],
     ))
     .transform()
-    .set_rotation(vector![90.0, 0.0, 0.0]);
+    .set_rotation(vector![0.0, 0.0, -90.0]);
 
     root.push_line(Line::new_arrow(
         magnitude,
@@ -77,7 +77,7 @@ fn cardinal_arrows(mut root: NodeMut, magnitude: f32) {
         vector![0.0, 0.0, 1.0],
     ))
     .transform()
-    .set_rotation(vector![0.0, 0.0, 90.0]);
+    .set_rotation(vector![90.0, 0.0, 0.0]);
 }
 
 struct App {

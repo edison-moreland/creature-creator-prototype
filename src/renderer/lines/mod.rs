@@ -94,10 +94,12 @@ impl Line {
         transform: &Transform,
         magnitude: f32,
     ) {
-        let direction = transform.apply_vector(&vector![0.0, 1.0, 0.0]).normalize() * magnitude;
+        let direction = transform.apply_vector(&vector![0.0, 1.0, 0.0]).normalize();
+        let origin = transform.apply_point(&point![0.0, 0.0, 0.0]);
 
-        let start = transform.apply_point(&point![0.0, 0.0, 0.0]);
-        let end = start + direction;
+        let start = origin;
+        let end = start + (direction * magnitude);
+        dbg!(end);
 
         let stem_thickness = self.thickness;
         let arrow_thickness = stem_thickness * 4.0;
