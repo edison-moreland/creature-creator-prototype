@@ -189,7 +189,7 @@ fn _any_indices_within<T: Positioned + Debug>(
             ((component - radius <= n.midpoint)
                 && _any_indices_within(item_arena, n.left.as_ref(), origin, radius))
                 || ((component + radius > n.midpoint)
-                    && _any_indices_within(item_arena, n.right.as_ref(), origin, radius))
+                && _any_indices_within(item_arena, n.right.as_ref(), origin, radius))
         }
     }
 }
@@ -231,8 +231,8 @@ pub struct KdContainer<T: Positioned + Debug> {
 }
 
 impl<T> Index<usize> for KdContainer<T>
-where
-    T: Positioned + Debug,
+    where
+        T: Positioned + Debug,
 {
     type Output = T;
 
@@ -242,8 +242,8 @@ where
 }
 
 impl<T> KdContainer<T>
-where
-    T: Positioned + Debug + Copy + Sync + Send,
+    where
+        T: Positioned + Debug + Copy + Sync + Send,
 {
     pub fn new() -> Self {
         KdContainer {

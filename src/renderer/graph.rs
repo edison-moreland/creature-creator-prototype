@@ -136,8 +136,8 @@ impl RenderGraph {
     }
 
     pub fn walk<F>(&self, mut f: F)
-    where
-        F: FnMut(Transform, &Kind),
+        where
+            F: FnMut(Transform, &Kind),
     {
         let mut to_visit = vec![(Transform::identity(), self.root)];
 
@@ -217,6 +217,7 @@ impl Mul for Transform {
         (self.0 * rhs.0).into()
     }
 }
+
 impl Mul for &Transform {
     type Output = Transform;
 

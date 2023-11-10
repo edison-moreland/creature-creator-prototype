@@ -99,7 +99,6 @@ impl Line {
 
         let start = origin;
         let end = start + (direction * magnitude);
-        dbg!(end);
 
         let stem_thickness = self.thickness;
         let arrow_thickness = stem_thickness * 4.0;

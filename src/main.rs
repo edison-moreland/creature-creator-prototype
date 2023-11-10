@@ -1,21 +1,21 @@
 use std::time::Instant;
 
 use nalgebra::{point, vector};
-use winit::dpi::{LogicalSize, PhysicalSize};
-use winit::event::StartCause;
-use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
-use winit::keyboard::{Key, NamedKey};
-use winit::window::Window;
 use winit::{
     event::{Event, WindowEvent},
     event_loop::EventLoop,
     window::WindowBuilder,
 };
+use winit::dpi::{LogicalSize, PhysicalSize};
+use winit::event::StartCause;
+use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
+use winit::keyboard::{Key, NamedKey};
+use winit::window::Window;
 
+use crate::renderer::{Camera, Renderer};
 use crate::renderer::graph::{NodeMut, RenderGraph, Transform};
 use crate::renderer::lines::{Fill, Line};
 use crate::renderer::surfaces::{Shape, Surface};
-use crate::renderer::{Camera, Renderer};
 
 mod geometry;
 mod renderer;
@@ -60,8 +60,8 @@ fn cardinal_arrows(mut root: NodeMut, magnitude: f32) {
         0.2,
         vector![1.0, 0.0, 0.0],
     ))
-    .transform()
-    .set_rotation(vector![0.0, 0.0, -90.0]);
+        .transform()
+        .set_rotation(vector![0.0, 0.0, -90.0]);
 
     root.push_line(Line::new_arrow(
         magnitude,
@@ -76,8 +76,8 @@ fn cardinal_arrows(mut root: NodeMut, magnitude: f32) {
         0.2,
         vector![0.0, 0.0, 1.0],
     ))
-    .transform()
-    .set_rotation(vector![90.0, 0.0, 0.0]);
+        .transform()
+        .set_rotation(vector![90.0, 0.0, 0.0]);
 }
 
 struct App {
