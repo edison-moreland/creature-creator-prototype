@@ -207,18 +207,7 @@ impl LinePipeline {
     }
 
     fn new_segment_buffer(device: &DeviceRef) -> Shared<[LineSegment; MAX_LINE_SEGMENTS]> {
-        Shared::new(
-            device,
-            [LineSegment {
-                start: [0.0, 0.0, 0.0],
-                end: [0.0, 0.0, 0.0],
-                color: [0.0, 0.0, 0.0],
-                thickness: 0.0,
-                segment_size: 0.0,
-                style: 0,
-                t_offset: 0.0,
-            }; MAX_LINE_SEGMENTS],
-        )
+        Shared::new_zeroed(device)
     }
 
     pub fn new(device: &DeviceRef) -> Self {

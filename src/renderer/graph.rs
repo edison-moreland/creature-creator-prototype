@@ -7,7 +7,7 @@ use nalgebra::{Point3, Similarity3, UnitQuaternion, Vector3};
 use crate::renderer::lines::Line;
 use crate::renderer::surfaces::Shape;
 
-type NodeId = generational_arena::Index;
+pub type NodeId = generational_arena::Index;
 
 pub enum Kind {
     Line(Line),
@@ -136,8 +136,8 @@ impl RenderGraph {
     }
 
     pub fn walk<F>(&self, mut f: F)
-        where
-            F: FnMut(Transform, &Kind),
+    where
+        F: FnMut(Transform, &Kind),
     {
         let mut to_visit = vec![(Transform::identity(), self.root)];
 

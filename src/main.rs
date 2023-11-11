@@ -1,3 +1,4 @@
+use std::f32::consts::PI;
 use std::time::Instant;
 
 use nalgebra::{point, vector};
@@ -12,7 +13,7 @@ use winit::{
     window::WindowBuilder,
 };
 
-use crate::renderer::graph::{NodeMut, RenderGraph};
+use crate::renderer::graph::{NodeId, NodeMut, RenderGraph};
 use crate::renderer::lines::{Fill, Line};
 use crate::renderer::surfaces::Shape;
 use crate::renderer::{Camera, Renderer};
@@ -21,7 +22,38 @@ mod geometry;
 mod renderer;
 mod spatial_indexer;
 
-fn character(mut character_node: NodeMut) {
+struct Character {
+    root_id: NodeId,
+}
+
+impl Character {
+    fn new(root_node: &mut NodeMut) -> Self {
+        root_node.transform().set_position(point![0.0, 10.0, 0.0]);
+
+        root_node.push_shape(Shape::Ellipsoid(vector![10.0, 10.0, 10.0]));
+        root_node.push_line(Line::new_circle(
+            10.1,
+            Fill::Dashed(0.4),
+            0.2,
+            vector![0.0, 0.0, 0.0],
+        ));
+
+        Self {
+            root_id: root_node.node_id(),
+        }
+    }
+
+    fn update_animation(&self, render_graph: &mut RenderGraph, seconds: f32) {
+        let oscillate = (((seconds * 2.0 * PI) - (PI / 2.0)).sin() + 1.0) / 2.0;
+
+        render_graph
+            .node_mut(self.root_id)
+            .transform()
+            .set_position(point![0.0, oscillate * 10.0, 0.0]);
+    }
+}
+
+fn character(character_node: &mut NodeMut) {
     character_node
         .transform()
         .set_position(point![0.0, 10.0, 0.0]);
@@ -86,6 +118,9 @@ struct App {
     #[allow(dead_code)] // Window is never used after initialization but it can't be dropped
     window: Window,
 
+    start: Instant,
+    character: Character,
+
     renderer: Renderer,
     render_graph: RenderGraph,
 }
@@ -110,10 +145,12 @@ impl App {
         grid(ui_node.push_empty(), 100.0, 5.0);
         cardinal_arrows(ui_node.push_empty(), 20.0);
 
-        character(root_node.push_empty());
+        let character = Character::new(&mut root_node.push_empty());
 
         App {
             window,
+            start: Instant::now(),
+            character,
             renderer,
             render_graph,
         }
@@ -127,12 +164,19 @@ impl App {
         self.renderer.resized(new_size);
     }
 
-    fn draw(&mut self) {
-        let start = Instant::now();
+    fn update(&mut self) {
+        let seconds = self.start.elapsed().as_secs_f32();
 
+        self.character
+            .update_animation(&mut self.render_graph, seconds);
+    }
+
+    fn draw(&mut self) {
+        self.update();
+
+        let start = Instant::now();
         self.renderer.draw_graph(0.5, &self.render_graph);
         self.renderer.commit();
-
         let draw_duration = start.elapsed();
         dbg!(draw_duration);
     }

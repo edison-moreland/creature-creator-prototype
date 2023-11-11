@@ -1,4 +1,6 @@
+use std::alloc::{alloc_zeroed, Layout};
 use std::f32::consts::PI;
+use std::mem;
 use std::mem::size_of;
 use std::time::Instant;
 
@@ -9,14 +11,14 @@ use metal::{
 };
 
 use crate::renderer::shared::Shared;
-use crate::renderer::surfaces::sampling::SamplingSystem;
+use crate::renderer::surfaces::sampling::{SamplingSystem, MAX_PARTICLE_COUNT};
 use crate::renderer::surfaces::Surface;
 use crate::renderer::uniforms::Uniforms;
 
 const SPHERE_SLICES: f32 = 16.0 / 2.0;
 const SPHERE_RINGS: f32 = 16.0 / 2.0;
 const SPHERE_VERTEX_COUNT: usize = (SPHERE_RINGS as usize + 2) * SPHERE_SLICES as usize * 6;
-const MAX_INSTANCE_COUNT: usize = 10000;
+const MAX_INSTANCE_COUNT: usize = MAX_PARTICLE_COUNT;
 const SPHERE_SHADER_LIBRARY: &[u8] = include_bytes!("sphere_shader.metallib");
 
 #[derive(Copy, Clone)]
@@ -172,14 +174,7 @@ impl SurfacePipeline {
     }
 
     fn new_instance_buffer(device: &DeviceRef) -> Shared<[Sphere; MAX_INSTANCE_COUNT]> {
-        Shared::new(
-            device,
-            [Sphere {
-                center: [0.0, 0.0, 0.0],
-                radius: 0.0,
-                normal: [0.0, 0.0, 0.0],
-            }; MAX_INSTANCE_COUNT],
-        )
+        Shared::new_zeroed(device)
     }
 
     fn new_vertices_buffer(device: &DeviceRef) -> Shared<[Vertex; SPHERE_VERTEX_COUNT]> {
