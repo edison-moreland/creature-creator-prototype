@@ -1,4 +1,4 @@
-use nalgebra::{Matrix4, point, Point3, vector, Vector3};
+use nalgebra::{point, vector, Matrix4, Point3, Vector3};
 
 pub use pipeline::SurfacePipeline;
 

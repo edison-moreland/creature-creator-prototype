@@ -1,6 +1,4 @@
-use std::alloc::{alloc_zeroed, Layout};
 use std::f32::consts::PI;
-use std::mem;
 use std::mem::size_of;
 use std::time::Instant;
 
@@ -11,7 +9,7 @@ use metal::{
 };
 
 use crate::renderer::shared::Shared;
-use crate::renderer::surfaces::sampling::{SamplingSystem, MAX_PARTICLE_COUNT};
+use crate::renderer::surfaces::sampling::{MAX_PARTICLE_COUNT, SamplingSystem};
 use crate::renderer::surfaces::Surface;
 use crate::renderer::uniforms::Uniforms;
 

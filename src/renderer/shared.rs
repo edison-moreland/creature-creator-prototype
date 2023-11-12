@@ -7,6 +7,8 @@ use std::ptr::addr_of;
 
 use metal::{Buffer, DeviceRef, MTLResourceOptions};
 
+// Used to construct a type on the heap, without involving the stack
+// This is to prevent a seg-fault when allocating the huge buffers for the particle system
 pub(super) fn new_zeroed_box<T: Sized>() -> Box<T> {
     unsafe {
         // This is safe because the T is sized and we're using the global allocator
