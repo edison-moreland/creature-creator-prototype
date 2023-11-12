@@ -146,20 +146,20 @@ impl Line {
         transform: &Transform,
         radius: f32,
     ) {
-        let segment_count = 24 * 2;
-        let points = Plane::from_origin_normal(
-            transform.apply_point(&point![0.0, 0.0, 0.0]),
-            transform.apply_vector(&vector![0.0, 1.0, 0.0]),
-        )
-        .circle_points(segment_count, radius);
+        let segment_count = 24 * 2; // TODO: Scale segment_count based on final radius/dash size
+        let points = Plane::from_origin_normal(point![0.0, 0.0, 0.0], vector![0.0, 1.0, 0.0])
+            .circle_points(segment_count, radius);
 
         let mut length = 0.0;
         for i in 0..segment_count {
             let last_i = if i == 0 { segment_count - 1 } else { i - 1 };
 
+            let a = transform.apply_point(&points[i]);
+            let b = transform.apply_point(&points[last_i]);
+
             segments.push(LineSegment::new(
-                points[i],
-                points[last_i],
+                a,
+                b,
                 self.color,
                 self.thickness,
                 self.dash_size(),
@@ -167,7 +167,7 @@ impl Line {
                 length,
             ));
 
-            length += (points[i] - points[last_i]).magnitude();
+            length += (a - b).magnitude();
         }
     }
 }

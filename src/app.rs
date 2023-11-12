@@ -1,4 +1,3 @@
-use std::f32::consts::PI;
 use std::time::Instant;
 
 use nalgebra::{point, vector};
@@ -6,39 +5,84 @@ use winit::dpi::{LogicalSize, PhysicalSize};
 use winit::event_loop::EventLoopWindowTarget;
 use winit::window::{Window, WindowBuilder};
 
-use crate::renderer::{Camera, Renderer};
 use crate::renderer::graph::{NodeId, NodeMut, RenderGraph};
 use crate::renderer::lines::{Fill, Line};
 use crate::renderer::surfaces::Shape;
+use crate::renderer::{Camera, Renderer};
 
 struct Character {
     root_id: NodeId,
+
+    bouncing_id: NodeId,
+    rotating_id: NodeId,
 }
 
 impl Character {
     fn new(root_node: &mut NodeMut) -> Self {
-        root_node.transform().set_position(point![0.0, 10.0, 0.0]);
-
+        let root_id = root_node.node_id();
         root_node.push_shape(Shape::Ellipsoid(vector![10.0, 10.0, 10.0]));
         root_node.push_line(Line::new_circle(
-            10.1,
-            Fill::Dashed(0.4),
-            0.2,
+            10.2,
+            Fill::Dashed(0.8),
+            0.4,
             vector![0.0, 0.0, 0.0],
         ));
 
+        let mut bouncing_node = root_node.push_empty();
+        let bouncing_id = bouncing_node.node_id();
+        bouncing_node.push_shape(Shape::Ellipsoid(vector![5.0, 10.0, 5.0]));
+
+        let mut rotating_node = root_node.push_empty();
+        let rotating_id = rotating_node.node_id();
+        rotating_node.push_line(Line::new_circle(
+            20.0,
+            Fill::Dashed(0.8),
+            0.4,
+            vector![0.0, 0.0, 0.0],
+        ));
+        rotating_node
+            .push_shape(Shape::Ellipsoid(vector![10.0, 5.0, 5.0]))
+            .transform()
+            .set_position(point![10.0, 0.0, 0.0]);
+
+        let mut bauble_node = rotating_node.push_shape(Shape::Ellipsoid(vector![10.0, 10.0, 10.0]));
+        bauble_node.transform().set_position(point![20.0, 0.0, 0.0]);
+        bauble_node.push_line(Line::new_circle(
+            10.2,
+            Fill::Dashed(0.8),
+            0.4,
+            vector![0.0, 0.0, 0.0],
+        ));
+        let mut bauble_arrow = bauble_node.push_line(Line::new_arrow(
+            5.0,
+            Fill::Solid,
+            0.4,
+            vector![0.0, 0.0, 0.0],
+        ));
+        bauble_arrow
+            .transform()
+            .set_position(point![0.0, 0.0, -10.0]);
+        bauble_arrow
+            .transform()
+            .set_rotation(vector![-90.0, 0.0, 0.0]);
+
         Self {
-            root_id: root_node.node_id(),
+            root_id,
+            bouncing_id,
+            rotating_id,
         }
     }
 
     fn update_animation(&self, render_graph: &mut RenderGraph, seconds: f32) {
-        let oscillate = (((seconds * 2.0 * PI) - (PI / 2.0)).sin() + 1.0) / 2.0;
+        render_graph
+            .node_mut(self.rotating_id)
+            .transform()
+            .set_rotation(vector![0.0, (seconds * 40.0) % 360.0, 0.0]);
 
         render_graph
-            .node_mut(self.root_id)
+            .node_mut(self.bouncing_id)
             .transform()
-            .set_position(point![0.0, oscillate * 10.0, 0.0]);
+            .set_position(point![0.0, seconds.sin() * 10.0, 0.0])
     }
 }
 
@@ -70,8 +114,8 @@ fn cardinal_arrows(mut root: NodeMut, magnitude: f32) {
         0.2,
         vector![1.0, 0.0, 0.0],
     ))
-        .transform()
-        .set_rotation(vector![0.0, 0.0, -90.0]);
+    .transform()
+    .set_rotation(vector![0.0, 0.0, -90.0]);
 
     root.push_line(Line::new_arrow(
         magnitude,
@@ -86,8 +130,8 @@ fn cardinal_arrows(mut root: NodeMut, magnitude: f32) {
         0.2,
         vector![0.0, 0.0, 1.0],
     ))
-        .transform()
-        .set_rotation(vector![90.0, 0.0, 0.0]);
+    .transform()
+    .set_rotation(vector![90.0, 0.0, 0.0]);
 }
 
 pub struct App {
@@ -151,7 +195,7 @@ impl App {
         self.update();
 
         let start = Instant::now();
-        self.renderer.draw_graph(0.4, &self.render_graph);
+        self.renderer.draw_graph(0.52, &self.render_graph);
         self.renderer.commit();
         let draw_duration = start.elapsed();
         dbg!(draw_duration);

@@ -1,4 +1,4 @@
-use nalgebra::{point, vector, Matrix4, Point3, Vector3};
+use nalgebra::{point, vector, Matrix4, Point3, RealField, Vector3};
 
 pub use pipeline::SurfacePipeline;
 
@@ -27,19 +27,46 @@ impl Surface {
         self.shapes.push((transform.to_homogeneous(), shape))
     }
 
-    fn sample(&self, at: Point3<f32>) -> f32 {
-        self.shapes
-            .iter()
-            .map(|(t, s)| {
-                let tat = t.transform_point(&at);
+    fn eval_shape(&self, index: usize, at: Point3<f32>) -> f32 {
+        let (t, s) = self.shapes[index];
 
-                match s {
-                    Shape::Ellipsoid(p) => ellipsoid(*p)(tat),
-                }
-            })
-            .min_by(|a, b| a.partial_cmp(b).unwrap())
-            .expect("no nans")
+        let tat = t.transform_point(&at);
+
+        match s {
+            Shape::Ellipsoid(p) => ellipsoid(p)(tat),
+        }
     }
+
+    fn sample(&self, at: Point3<f32>) -> f32 {
+        match self.shapes.len() {
+            0 => {
+                panic!("No shapes! Nothing to sample.")
+            }
+            1 => self.eval_shape(0, at),
+            2 => smooth_min(self.eval_shape(0, at), self.eval_shape(1, at), 0.5),
+            _ => {
+                let mut min_1 = f32::MAX;
+                let mut min_2 = f32::MAX;
+
+                for i in 0..self.shapes.len() {
+                    let t = self.eval_shape(i, at);
+
+                    if t < min_1 {
+                        min_2 = min_1;
+                        min_1 = t;
+                    }
+                }
+
+                smooth_min(min_1, min_2, 0.5)
+            }
+        }
+    }
+}
+
+fn smooth_min(a: f32, b: f32, k: f32) -> f32 {
+    let h = (k - (a - b).abs()).max(0.0);
+
+    a.min(b) - (h * h * 0.25 / k)
 }
 
 pub fn seed(surface: &Surface) -> Point3<f32> {

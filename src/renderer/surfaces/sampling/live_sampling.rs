@@ -1,16 +1,16 @@
 use std::mem;
 use std::ops::Neg;
 
-use nalgebra::{Point3, vector, Vector3};
+use nalgebra::{vector, Point3, Vector3};
 
 use crate::renderer::shared::new_zeroed_box;
-use crate::renderer::surfaces::{gradient, Surface};
 use crate::renderer::surfaces::sampling::buffer_allocator::{
     BufferAllocator, StackBufferAllocator,
 };
 use crate::renderer::surfaces::sampling::initial_sampling::sample;
-use crate::spatial_indexer::{Positioned, SpatialIndexer};
+use crate::renderer::surfaces::{gradient, Surface};
 use crate::spatial_indexer::kd_indexer::KdIndexer;
+use crate::spatial_indexer::{Positioned, SpatialIndexer};
 
 // Using Particles to Sample and Control Implicit Surfaces.
 // Andrew P. Witkin, Paul S. Heckbert
@@ -19,7 +19,7 @@ use crate::spatial_indexer::kd_indexer::KdIndexer;
 const REPULSION_AMPLITUDE: f32 = 6.0;
 const FEEDBACK: f32 = 15.0;
 const NEIGHBOUR_RADIUS: f32 = 3.0;
-const UPDATE_ITERATIONS: usize = 4;
+const UPDATE_ITERATIONS: usize = 8;
 const ITERATION_T_STEP: f32 = 0.03;
 const EQUILIBRIUM_SPEED: f32 = 100.0;
 const FISSION_COEFFICIENT: f32 = 0.2;
@@ -36,8 +36,8 @@ fn random_velocity() -> Vector3<f32> {
 fn energy_contribution(i_repulsion_radius: f32, i: Point3<f32>, j: Point3<f32>) -> f32 {
     REPULSION_AMPLITUDE
         * ((i - j).magnitude().powf(2.0) / (2.0 * i_repulsion_radius).powf(2.0))
-        .neg()
-        .exp()
+            .neg()
+            .exp()
 }
 
 fn constrain_to_surface(
@@ -48,8 +48,8 @@ fn constrain_to_surface(
 ) -> Vector3<f32> {
     velocity
         - normal.scale(
-        (normal.dot(&velocity) + (FEEDBACK * surface.sample(position))) / (normal.dot(&normal)),
-    )
+            (normal.dot(&velocity) + (FEEDBACK * surface.sample(position))) / (normal.dot(&normal)),
+        )
 }
 
 fn should_die(radius: f32, desired_radius: f32) -> bool {
@@ -146,7 +146,7 @@ impl SamplingSystem {
 
     pub fn positions(
         &self,
-    ) -> impl Iterator<Item=(Point3<f32>, Vector3<f32>, f32)> + ExactSizeIterator + '_ {
+    ) -> impl Iterator<Item = (Point3<f32>, Vector3<f32>, f32)> + ExactSizeIterator + '_ {
         self.living_particles.iter().map(|i| {
             let particle = self.particles_a[*i];
             (particle.position, particle.normal, particle.radius)
@@ -271,15 +271,15 @@ impl SamplingSystem {
         // change in energy with respect to change in radius
         let di_ai = (1.0 / radius.powf(3.0))
             * neighbours
-            .iter()
-            .map(|(j, energy_cont, _)| {
-                let dist = (position - self.particles_a[*j].position())
-                    .magnitude()
-                    .powf(2.0);
+                .iter()
+                .map(|(j, energy_cont, _)| {
+                    let dist = (position - self.particles_a[*j].position())
+                        .magnitude()
+                        .powf(2.0);
 
-                dist * energy_cont
-            })
-            .sum::<f32>();
+                    dist * energy_cont
+                })
+                .sum::<f32>();
 
         // Radius change to bring us to desired energy
         let radius_delta = re_delta / (di_ai + 10.0);

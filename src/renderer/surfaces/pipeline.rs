@@ -9,7 +9,7 @@ use metal::{
 };
 
 use crate::renderer::shared::Shared;
-use crate::renderer::surfaces::sampling::{MAX_PARTICLE_COUNT, SamplingSystem};
+use crate::renderer::surfaces::sampling::{SamplingSystem, MAX_PARTICLE_COUNT};
 use crate::renderer::surfaces::Surface;
 use crate::renderer::uniforms::Uniforms;
 
@@ -213,16 +213,6 @@ impl SurfacePipeline {
         dbg!(sampling_duration);
     }
 
-    // pub fn draw_spheres(&mut self, spheres: &[Sphere]) {
-    //     let instance_count = spheres.len();
-    //     if instance_count > MAX_INSTANCE_COUNT {
-    //         panic!("HEY THAT:S TOO BIG!!! HEY !!")
-    //     }
-    //
-    //     self.instance_count = instance_count;
-    //     self.instances[0..instance_count].copy_from_slice(spheres);
-    // }
-    //
     pub fn reset(&mut self) {
         self.instance_count = 0; // Mostly here for consistency
     }
