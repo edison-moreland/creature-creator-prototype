@@ -21,12 +21,11 @@ impl Character {
     fn new(root_node: &mut NodeMut) -> Self {
         let root_id = root_node.node_id();
         root_node.push_shape(Shape::Ellipsoid(vector![10.0, 10.0, 10.0]));
-        root_node.push_line(Line::new_circle(
-            10.2,
-            Fill::Dashed(0.8),
-            0.4,
-            vector![0.0, 0.0, 0.0],
-        ));
+        root_node.push_line(
+            Line::new_circle(10.2)
+                .fill(Fill::Dashed(0.8))
+                .thickness(0.4),
+        );
 
         let mut bouncing_node = root_node.push_empty();
         let bouncing_id = bouncing_node.node_id();
@@ -34,12 +33,11 @@ impl Character {
 
         let mut rotating_node = root_node.push_empty();
         let rotating_id = rotating_node.node_id();
-        rotating_node.push_line(Line::new_circle(
-            20.0,
-            Fill::Dashed(0.8),
-            0.4,
-            vector![0.0, 0.0, 0.0],
-        ));
+        rotating_node.push_line(
+            Line::new_circle(20.0)
+                .fill(Fill::Dashed(0.8))
+                .thickness(0.4),
+        );
         rotating_node
             .push_shape(Shape::Ellipsoid(vector![10.0, 5.0, 5.0]))
             .transform()
@@ -47,18 +45,12 @@ impl Character {
 
         let mut bauble_node = rotating_node.push_shape(Shape::Ellipsoid(vector![10.0, 10.0, 10.0]));
         bauble_node.transform().set_position(point![20.0, 0.0, 0.0]);
-        bauble_node.push_line(Line::new_circle(
-            10.2,
-            Fill::Dashed(0.8),
-            0.4,
-            vector![0.0, 0.0, 0.0],
-        ));
-        let mut bauble_arrow = bauble_node.push_line(Line::new_arrow(
-            5.0,
-            Fill::Solid,
-            0.4,
-            vector![0.0, 0.0, 0.0],
-        ));
+        bauble_node.push_line(
+            Line::new_circle(10.2)
+                .fill(Fill::Dashed(0.8))
+                .thickness(0.4),
+        );
+        let mut bauble_arrow = bauble_node.push_line(Line::new_arrow(5.0).thickness(0.4));
         bauble_arrow
             .transform()
             .set_position(point![0.0, 0.0, -10.0]);
@@ -91,13 +83,13 @@ fn grid(mut root: NodeMut, size: f32, step: f32) {
 
     let mut grid_line_position = start;
     while grid_line_position <= -start {
-        let mut x_line = root.push_line(Line::new(size, Fill::Solid, 0.1, vector![0.0, 0.0, 0.0]));
+        let mut x_line = root.push_line(Line::new(size));
         x_line
             .transform()
             .set_position(point![grid_line_position, 0.0, 0.0]);
         x_line.transform().set_rotation(vector![90.0, 0.0, 0.0]);
 
-        let mut y_line = root.push_line(Line::new(size, Fill::Solid, 0.1, vector![0.0, 0.0, 0.0]));
+        let mut y_line = root.push_line(Line::new(size));
         y_line
             .transform()
             .set_position(point![0.0, 0.0, grid_line_position]);
@@ -108,28 +100,25 @@ fn grid(mut root: NodeMut, size: f32, step: f32) {
 }
 
 fn cardinal_arrows(mut root: NodeMut, magnitude: f32) {
-    root.push_line(Line::new_arrow(
-        magnitude,
-        Fill::Solid,
-        0.2,
-        vector![1.0, 0.0, 0.0],
-    ))
+    root.push_line(
+        Line::new_arrow(magnitude)
+            .thickness(0.2)
+            .color(vector![1.0, 0.0, 0.0]),
+    )
     .transform()
     .set_rotation(vector![0.0, 0.0, -90.0]);
 
-    root.push_line(Line::new_arrow(
-        magnitude,
-        Fill::Solid,
-        0.2,
-        vector![0.0, 1.0, 0.0],
-    ));
+    root.push_line(
+        Line::new_arrow(magnitude)
+            .thickness(0.2)
+            .color(vector![0.0, 1.0, 0.0]),
+    );
 
-    root.push_line(Line::new_arrow(
-        magnitude,
-        Fill::Solid,
-        0.2,
-        vector![0.0, 0.0, 1.0],
-    ))
+    root.push_line(
+        Line::new_arrow(magnitude)
+            .thickness(0.2)
+            .color(vector![0.0, 0.0, 1.0]),
+    )
     .transform()
     .set_rotation(vector![90.0, 0.0, 0.0]);
 }

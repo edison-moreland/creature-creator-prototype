@@ -28,30 +28,45 @@ pub struct Line {
 }
 
 impl Line {
-    pub fn new(length: f32, fill: Fill, thickness: f32, color: Vector3<f32>) -> Self {
+    pub fn new(length: f32) -> Self {
         Self {
             shape: Shape::None { length },
-            fill,
-            thickness,
-            color,
+            fill: Fill::Solid,
+            thickness: 0.1,
+            color: Default::default(),
         }
     }
-    pub fn new_arrow(magnitude: f32, fill: Fill, thickness: f32, color: Vector3<f32>) -> Self {
+    pub fn new_arrow(magnitude: f32) -> Self {
         Self {
             shape: Shape::Arrow { magnitude },
-            fill,
-            thickness,
-            color,
+            fill: Fill::Solid,
+            thickness: 0.1,
+            color: Default::default(),
         }
     }
 
-    pub fn new_circle(radius: f32, fill: Fill, thickness: f32, color: Vector3<f32>) -> Self {
+    pub fn new_circle(radius: f32) -> Self {
         Self {
             shape: Shape::Circle { radius },
-            fill,
-            thickness,
-            color,
+            fill: Fill::Solid,
+            thickness: 0.1,
+            color: Default::default(),
         }
+    }
+
+    pub fn fill(mut self, fill: Fill) -> Self {
+        self.fill = fill;
+        self
+    }
+
+    pub fn thickness(mut self, thickness: f32) -> Self {
+        self.thickness = thickness;
+        self
+    }
+
+    pub fn color(mut self, color: Vector3<f32>) -> Self {
+        self.color = color;
+        self
     }
 
     pub(crate) fn line_segments(&self, segments: &mut Vec<LineSegment>, transform: &Transform) {

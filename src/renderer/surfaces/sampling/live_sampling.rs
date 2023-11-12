@@ -96,13 +96,6 @@ pub struct SamplingSystem {
 
 impl SamplingSystem {
     pub fn new() -> Self {
-        // let particles = [Particle {
-        //     position: point![0.0, 0.0, 0.0],
-        //     velocity: vector![0.0, 0.0, 0.0],
-        //     normal: vector![0.0, 0.0, 0.0],
-        //     radius: 0.0,
-        // }; MAX_PARTICLE_COUNT];
-        //
         SamplingSystem {
             living_particles: vec![],
             position_index: KdIndexer::new(),
