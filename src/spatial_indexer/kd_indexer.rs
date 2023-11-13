@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::ops::Index;
 
@@ -189,7 +191,7 @@ fn _any_indices_within<T: Positioned + Debug>(
             ((component - radius <= n.midpoint)
                 && _any_indices_within(item_arena, n.left.as_ref(), origin, radius))
                 || ((component + radius > n.midpoint)
-                && _any_indices_within(item_arena, n.right.as_ref(), origin, radius))
+                    && _any_indices_within(item_arena, n.right.as_ref(), origin, radius))
         }
     }
 }
@@ -231,8 +233,8 @@ pub struct KdContainer<T: Positioned + Debug> {
 }
 
 impl<T> Index<usize> for KdContainer<T>
-    where
-        T: Positioned + Debug,
+where
+    T: Positioned + Debug,
 {
     type Output = T;
 
@@ -242,8 +244,8 @@ impl<T> Index<usize> for KdContainer<T>
 }
 
 impl<T> KdContainer<T>
-    where
-        T: Positioned + Debug + Copy + Sync + Send,
+where
+    T: Positioned + Debug + Copy + Sync + Send,
 {
     pub fn new() -> Self {
         KdContainer {
@@ -273,13 +275,40 @@ impl<T> KdContainer<T>
 
 // KdIndexer uses a KdTree to provide spatial indexing
 pub struct KdIndexer {
+    avg_query_size_samples: RefCell<VecDeque<isize>>,
+
     root: KdTree,
 }
 
 impl KdIndexer {
     pub fn new() -> Self {
         KdIndexer {
+            avg_query_size_samples: RefCell::new(VecDeque::new()),
             root: KdTree::Leaf(vec![]),
+        }
+    }
+}
+
+impl KdIndexer {
+    // 50% of our time is spent in `get_indices_within`, so any way we can reduce work is worth it
+    // avg_query_size is used to pre-allocate the indices vec so we don't need to extend it
+    fn avg_query_size(&self) -> usize {
+        let samples = self.avg_query_size_samples.borrow();
+
+        if samples.len() == 0 {
+            return 0;
+        }
+
+        (samples.iter().sum::<isize>() / samples.len() as isize) as usize
+    }
+
+    fn sample_query_size(&self, size: usize) {
+        let mut samples = self.avg_query_size_samples.borrow_mut();
+
+        samples.push_back(size as isize);
+
+        if samples.len() > 10 {
+            _ = samples.pop_front().unwrap()
         }
     }
 }
@@ -299,9 +328,11 @@ impl<P: Positioned + Debug + Sync> SpatialIndexer<P> for KdIndexer {
     }
 
     fn get_indices_within(&self, items: &[P], origin: Point3<f32>, radius: f32) -> Vec<usize> {
-        let mut indicies = vec![];
+        let mut indicies = Vec::with_capacity(self.avg_query_size() * 2);
 
         _get_indices_within(items, &self.root, origin, radius, &mut indicies);
+
+        self.sample_query_size(indicies.len());
 
         indicies
     }
