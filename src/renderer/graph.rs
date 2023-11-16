@@ -45,6 +45,7 @@ impl<'a> NodeRef<'a> {
     pub fn transform(&self) -> &Transform {
         &self.node().0.transform
     }
+
     pub fn children(&self) -> Vec<NodeRef> {
         self.node()
             .1
@@ -72,6 +73,12 @@ impl<'a> NodeMut<'a> {
     }
     pub fn transform(&mut self) -> &mut Transform {
         &mut self.node().0.transform
+    }
+    pub fn with_transform<F>(&mut self, f: F)
+    where
+        F: FnOnce(&mut Transform),
+    {
+        f(&mut self.node().0.transform)
     }
     pub fn push(&mut self, node: Node) -> NodeMut {
         let child_index = self.nodes.insert((node, vec![]));
@@ -136,8 +143,8 @@ impl RenderGraph {
     }
 
     pub fn walk<F>(&self, mut f: F)
-        where
-            F: FnMut(Transform, &Kind),
+    where
+        F: FnMut(Transform, &Kind),
     {
         let mut to_visit = vec![(Transform::identity(), self.root)];
 

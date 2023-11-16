@@ -1,13 +1,13 @@
 use cocoa::appkit::NSView;
 use cocoa::base::id;
 use core_graphics_types::geometry::CGSize;
+use metal::objc::runtime::YES;
 use metal::{
-    CommandQueue, DepthStencilDescriptor, DepthStencilState, Device, DeviceRef, MetalDrawableRef,
-    MetalLayer, MTLClearColor, MTLCompareFunction, MTLLoadAction, MTLPixelFormat,
-    MTLStorageMode, MTLStoreAction, MTLTextureUsage, RenderCommandEncoderRef, Texture,
+    CommandQueue, DepthStencilDescriptor, DepthStencilState, Device, DeviceRef, MTLClearColor,
+    MTLCompareFunction, MTLLoadAction, MTLPixelFormat, MTLStorageMode, MTLStoreAction,
+    MTLTextureUsage, MetalDrawableRef, MetalLayer, RenderCommandEncoderRef, Texture,
     TextureDescriptor,
 };
-use metal::objc::runtime::YES;
 use winit::dpi::PhysicalSize;
 use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
 use winit::window::Window;
@@ -143,8 +143,10 @@ impl Renderer {
             Kind::Shape(s) => surface.push(transform.inverse().into(), *s),
         });
 
-        self.sphere_pipeline
-            .draw_surface(&surface, surface_sample_radius);
+        if !surface.empty() {
+            self.sphere_pipeline
+                .draw_surface(&surface, surface_sample_radius);
+        }
         self.line_pipeline.draw_line_segments(line_segments)
     }
 
@@ -166,8 +168,8 @@ impl Renderer {
     }
 
     fn render_pass<F>(&self, drawable: &MetalDrawableRef, f: F)
-        where
-            F: FnOnce(&RenderCommandEncoderRef),
+    where
+        F: FnOnce(&RenderCommandEncoderRef),
     {
         let render_pass = metal::RenderPassDescriptor::new();
         let color_attachment = render_pass.color_attachments().object_at(0).unwrap();

@@ -223,6 +223,10 @@ impl SurfacePipeline {
         uniforms: &'a Shared<Uniforms>,
     ) -> impl FnOnce(&RenderCommandEncoderRef) + 'a {
         move |encoder| {
+            if self.instance_count == 0 {
+                return;
+            }
+
             encoder.set_render_pipeline_state(&self.pipeline);
             encoder.set_depth_stencil_state(depth_stencil);
             encoder.set_vertex_buffer(0, Some(self.vertices.buffer()), 0);

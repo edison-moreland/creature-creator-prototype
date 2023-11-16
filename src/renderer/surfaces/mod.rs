@@ -27,6 +27,10 @@ impl Surface {
         self.shapes.push((transform.to_homogeneous(), shape))
     }
 
+    pub(crate) fn empty(&self) -> bool {
+        self.shapes.is_empty()
+    }
+
     fn eval_shape(&self, index: usize, at: Point3<f32>) -> f32 {
         let (t, s) = self.shapes[index];
 
