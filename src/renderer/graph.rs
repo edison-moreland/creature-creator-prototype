@@ -2,7 +2,7 @@ use std::f32::consts::PI;
 use std::ops::{Deref, DerefMut, Mul};
 
 use generational_arena::Arena;
-use nalgebra::{Point3, Similarity3, UnitQuaternion, Vector3};
+use nalgebra::{point, vector, Matrix4, Point3, Rotation3, Scale3, Translation3, Vector3};
 
 use crate::renderer::lines::Line;
 use crate::renderer::surfaces::Shape;
@@ -15,14 +15,14 @@ pub enum Kind {
 }
 
 pub struct Node {
-    pub transform: Transform,
+    pub transform: NodeTransform,
     kind: Option<Kind>,
 }
 
 impl Node {
     pub fn new(kind: Option<Kind>) -> Self {
         Self {
-            transform: Transform::identity(),
+            transform: NodeTransform::identity(),
             kind,
         }
     }
@@ -42,7 +42,7 @@ impl<'a> NodeRef<'a> {
     pub fn node_id(&self) -> NodeId {
         self.id
     }
-    pub fn transform(&self) -> &Transform {
+    pub fn transform(&self) -> &NodeTransform {
         &self.node().0.transform
     }
 
@@ -71,12 +71,12 @@ impl<'a> NodeMut<'a> {
     pub fn node_id(&self) -> NodeId {
         self.id
     }
-    pub fn transform(&mut self) -> &mut Transform {
+    pub fn transform(&mut self) -> &mut NodeTransform {
         &mut self.node().0.transform
     }
     pub fn with_transform<F>(&mut self, f: F)
     where
-        F: FnOnce(&mut Transform),
+        F: FnOnce(&mut NodeTransform),
     {
         f(&mut self.node().0.transform)
     }
@@ -144,14 +144,14 @@ impl RenderGraph {
 
     pub fn walk<F>(&self, mut f: F)
     where
-        F: FnMut(Transform, &Kind),
+        F: FnMut(Matrix4<f32>, &Kind),
     {
-        let mut to_visit = vec![(Transform::identity(), self.root)];
+        let mut to_visit = vec![(Matrix4::identity(), self.root)];
 
         while let Some((previous_transform, index)) = to_visit.pop() {
             let (node, children) = &self.nodes[index];
 
-            let transform = previous_transform * node.transform;
+            let transform = previous_transform * node.transform.to_homogeneous();
 
             if let Some(kind) = &node.kind {
                 f(transform, kind);
@@ -165,71 +165,28 @@ impl RenderGraph {
 }
 
 #[derive(Clone, Copy)]
-pub struct Transform(Similarity3<f32>);
+pub struct NodeTransform {
+    pub position: Point3<f32>,
+    pub rotation: Vector3<f32>,
+    pub scale: Vector3<f32>,
+}
 
-impl Transform {
+impl NodeTransform {
     pub fn identity() -> Self {
-        Self(Similarity3::identity())
+        Self {
+            position: point![0.0, 0.0, 0.0],
+            rotation: vector![0.0, 0.0, 0.0],
+            scale: vector![1.0, 1.0, 1.0],
+        }
     }
 
-    pub fn apply_point(&self, point: &Point3<f32>) -> Point3<f32> {
-        self.0.transform_point(point)
-    }
+    pub fn to_homogeneous(&self) -> Matrix4<f32> {
+        let translation =
+            Translation3::new(self.position.x, self.position.y, self.position.z).to_homogeneous();
+        let rotation = Rotation3::new(self.rotation * (PI / 180.0)).to_homogeneous();
+        let scale = Scale3::new(self.scale.x, self.scale.y, self.scale.z).to_homogeneous();
 
-    pub fn apply_vector(&self, vector: &Vector3<f32>) -> Vector3<f32> {
-        self.transform_vector(vector)
-    }
-
-    pub fn position(&self) -> Point3<f32> {
-        Point3::from(self.0.isometry.translation.vector)
-    }
-
-    pub fn set_position(&mut self, new_position: Point3<f32>) {
-        self.isometry.translation.vector = new_position.coords
-    }
-
-    pub fn rotation(&self) -> Vector3<f32> {
-        self.isometry.rotation.scaled_axis() * (180.0 / PI)
-    }
-
-    pub fn set_rotation(&mut self, rotation: Vector3<f32>) {
-        self.isometry.rotation = UnitQuaternion::from_scaled_axis(rotation * (PI / 180.0))
-    }
-}
-
-impl From<Similarity3<f32>> for Transform {
-    fn from(value: Similarity3<f32>) -> Self {
-        Self(value)
-    }
-}
-
-impl Deref for Transform {
-    type Target = Similarity3<f32>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for Transform {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl Mul for Transform {
-    type Output = Transform;
-
-    fn mul(self, rhs: Self) -> Self::Output {
-        (self.0 * rhs.0).into()
-    }
-}
-
-impl Mul for &Transform {
-    type Output = Transform;
-
-    fn mul(self, rhs: Self) -> Self::Output {
-        (self.0 * rhs.0).into()
+        translation * rotation * scale
     }
 }
 
@@ -237,36 +194,52 @@ impl Mul for &Transform {
 mod tests {
     use nalgebra::{point, vector};
 
-    use crate::renderer::graph::Transform;
+    use crate::renderer::graph::NodeTransform;
+
+    #[test]
+    fn can_invert_identity() {
+        let transform = NodeTransform::identity();
+
+        let m = transform.to_homogeneous().try_inverse().unwrap();
+
+        assert_eq!(
+            m.transform_point(&point![0.0, 0.0, 0.0]),
+            point![0.0, 0.0, 0.0]
+        )
+    }
 
     #[test]
     fn transform_position() {
-        let mut transform = Transform::identity();
+        let mut transform = NodeTransform::identity();
 
-        assert_eq!(transform.position(), point![0.0, 0.0, 0.0]);
+        assert_eq!(transform.position, point![0.0, 0.0, 0.0]);
 
-        transform.set_position(point![10.0, 0.0, 0.0]);
+        transform.position = point![10.0, 0.0, 0.0];
 
-        assert_eq!(transform.position(), point![10.0, 0.0, 0.0]);
+        assert_eq!(transform.position, point![10.0, 0.0, 0.0]);
         assert_eq!(
-            transform.apply_point(&point![0.0, 0.0, 0.0]),
+            transform
+                .to_homogeneous()
+                .transform_point(&point![0.0, 0.0, 0.0]),
             point![10.0, 0.0, 0.0]
         );
     }
 
     #[test]
     fn transform_rotation() {
-        let mut transform = Transform::identity();
+        let mut transform = NodeTransform::identity();
 
-        assert_eq!(transform.rotation(), vector![0.0, 0.0, 0.0]);
+        assert_eq!(transform.rotation, vector![0.0, 0.0, 0.0]);
 
-        transform.set_rotation(vector![180.0, 0.0, 0.0]);
+        transform.rotation = vector![180.0, 0.0, 0.0];
 
+        assert_eq!(transform.rotation, vector![180.0, 0.0, 0.0]);
         assert!(
-            dbg!((transform.rotation().abs() - vector![180.0, 0.0, 0.0]).magnitude()) <= 0.0001
-        );
-        assert!(
-            (transform.apply_point(&point![0.0, 0.0, 1.0]) - point![0.0, 0.0, -1.0]).magnitude()
+            (dbg!(transform
+                .to_homogeneous()
+                .transform_point(&point![0.0, 0.0, 1.0]))
+                - point![0.0, 0.0, -1.0])
+            .magnitude()
                 <= 0.0001
         );
     }

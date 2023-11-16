@@ -140,7 +140,10 @@ impl Renderer {
 
         graph.walk(|transform, kind| match kind {
             Kind::Line(l) => l.line_segments(&mut line_segments, &transform),
-            Kind::Shape(s) => surface.push(transform.inverse().into(), *s),
+            Kind::Shape(s) => surface.push(
+                transform.try_inverse().expect("transform can be inverted"),
+                *s,
+            ),
         });
 
         if !surface.empty() {

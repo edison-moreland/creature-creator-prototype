@@ -1,7 +1,7 @@
-use nalgebra::{point, vector, Vector3};
+use nalgebra::{point, vector, Matrix4, Vector3};
 
 use crate::geometry::Plane;
-use crate::renderer::graph::Transform;
+use crate::renderer::graph::NodeTransform;
 use crate::renderer::lines::pipeline::LineSegment;
 
 pub mod pipeline;
@@ -69,7 +69,7 @@ impl Line {
         self
     }
 
-    pub(crate) fn line_segments(&self, segments: &mut Vec<LineSegment>, transform: &Transform) {
+    pub(crate) fn line_segments(&self, segments: &mut Vec<LineSegment>, transform: &Matrix4<f32>) {
         match self.shape {
             Shape::None { length } => self.shape_none_segments(segments, transform, length),
             Shape::Arrow { magnitude } => self.shape_arrow_segments(segments, transform, magnitude),
@@ -87,15 +87,15 @@ impl Line {
     fn shape_none_segments(
         &self,
         segments: &mut Vec<LineSegment>,
-        transform: &Transform,
+        transform: &Matrix4<f32>,
         length: f32,
     ) {
         let start = point![0.0, length / 2.0, 0.0];
         let end = point![0.0, -(length / 2.0), 0.0];
 
         segments.push(LineSegment::new(
-            transform.apply_point(&start),
-            transform.apply_point(&end),
+            transform.transform_point(&start),
+            transform.transform_point(&end),
             self.color,
             self.thickness,
             self.dash_size(),
@@ -107,11 +107,13 @@ impl Line {
     fn shape_arrow_segments(
         &self,
         segments: &mut Vec<LineSegment>,
-        transform: &Transform,
+        transform: &Matrix4<f32>,
         magnitude: f32,
     ) {
-        let direction = transform.apply_vector(&vector![0.0, 1.0, 0.0]).normalize();
-        let origin = transform.apply_point(&point![0.0, 0.0, 0.0]);
+        let direction = transform
+            .transform_vector(&vector![0.0, 1.0, 0.0])
+            .normalize();
+        let origin = transform.transform_point(&point![0.0, 0.0, 0.0]);
 
         let start = origin;
         let end = start + (direction * magnitude);
@@ -158,7 +160,7 @@ impl Line {
     fn shape_circle_segments(
         &self,
         segments: &mut Vec<LineSegment>,
-        transform: &Transform,
+        transform: &Matrix4<f32>,
         radius: f32,
     ) {
         let segment_count = 24 * 2; // TODO: Scale segment_count based on final radius/dash size
@@ -169,8 +171,8 @@ impl Line {
         for i in 0..segment_count {
             let last_i = if i == 0 { segment_count - 1 } else { i - 1 };
 
-            let a = transform.apply_point(&points[i]);
-            let b = transform.apply_point(&points[last_i]);
+            let a = transform.transform_point(&points[i]);
+            let b = transform.transform_point(&points[last_i]);
 
             segments.push(LineSegment::new(
                 a,

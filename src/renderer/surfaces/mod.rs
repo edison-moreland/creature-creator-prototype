@@ -2,7 +2,7 @@ use nalgebra::{point, vector, Matrix4, Point3, RealField, Vector3};
 
 pub use pipeline::SurfacePipeline;
 
-use crate::renderer::graph::Transform;
+use crate::renderer::graph::NodeTransform;
 use crate::renderer::surfaces::primitives::{cylinder, ellipsoid, quadratic_surface, sphere};
 
 mod pipeline;
@@ -25,8 +25,8 @@ impl Surface {
         Self { shapes: vec![] }
     }
 
-    pub fn push(&mut self, transform: Transform, shape: Shape) {
-        self.shapes.push((transform.to_homogeneous(), shape))
+    pub fn push(&mut self, transform: Matrix4<f32>, shape: Shape) {
+        self.shapes.push((transform, shape))
     }
 
     pub(crate) fn empty(&self) -> bool {
