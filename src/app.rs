@@ -1,81 +1,119 @@
+use std::f32::consts::PI;
 use std::time::Instant;
 
-use nalgebra::{point, vector};
+use nalgebra::{point, vector, Vector3};
 use winit::dpi::{LogicalSize, PhysicalSize};
 use winit::event_loop::EventLoopWindowTarget;
 use winit::window::{Window, WindowBuilder};
 
 use crate::renderer::graph::{NodeId, NodeMut, RenderGraph};
-use crate::renderer::lines::{Fill, Line};
+use crate::renderer::lines::Line;
 use crate::renderer::surfaces::Shape;
 use crate::renderer::{Camera, Renderer};
 
 struct Character {
     root_id: NodeId,
 
-    bouncing_id: NodeId,
-    rotating_id: NodeId,
+    right_arm_id: NodeId,
 }
 
 impl Character {
     fn new(root_node: &mut NodeMut) -> Self {
+        root_node.with_transform(|t| {
+            t.set_position(point![0.0, 10.0, 0.0]);
+            t.set_rotation(vector![0.0, 45.0, 0.0])
+        });
         let root_id = root_node.node_id();
-        root_node.push_shape(Shape::Ellipsoid(vector![10.0, 10.0, 10.0]));
-        root_node.push_line(
-            Line::new_circle(10.2)
-                .fill(Fill::Dashed(0.8))
-                .thickness(0.4),
-        );
 
-        let mut bouncing_node = root_node.push_empty();
-        let bouncing_id = bouncing_node.node_id();
-        bouncing_node.push_shape(Shape::Ellipsoid(vector![5.0, 10.0, 5.0]));
+        let chest_size = 10.0;
+        let chest_half_size = chest_size / 2.0;
+        let mut chest_node = root_node.push_empty();
+        chest_node
+            .push_line(Line::new(chest_size))
+            .with_transform(|t| t.set_position(point![chest_half_size, 0.0, 0.0]));
+        chest_node
+            .push_line(Line::new(chest_size))
+            .with_transform(|t| t.set_position(point![-chest_half_size, 0.0, 0.0]));
+        chest_node
+            .push_line(Line::new(chest_size))
+            .with_transform(|t| {
+                t.set_rotation(vector![0.0, 0.0, 90.0]);
+                t.set_position(point![0.0, chest_half_size, 0.0])
+            });
+        chest_node
+            .push_line(Line::new(chest_size))
+            .with_transform(|t| {
+                t.set_rotation(vector![0.0, 0.0, 90.0]);
+                t.set_position(point![0.0, -chest_half_size, 0.0])
+            });
 
-        let mut rotating_node = root_node.push_empty();
-        let rotating_id = rotating_node.node_id();
-        rotating_node.push_line(
-            Line::new_circle(20.0)
-                .fill(Fill::Dashed(0.8))
-                .thickness(0.4),
-        );
-        rotating_node
-            .push_shape(Shape::Ellipsoid(vector![10.0, 5.0, 5.0]))
-            .transform()
-            .set_position(point![10.0, 0.0, 0.0]);
+        // chest_node.push_shape(Shape::Quadratic(matrix![
+        //     1.0, 0.0, 0.0, 0.0;
+        //     0.0, 1.0, 0.0, 0.0;
+        //     0.0, 0.0, 1.0, 0.0;
+        //     0.0, 0.0, 0.0, -(3.0f32).powf(2.0);
+        // ]));
+        chest_node.push_shape(Shape::Ellipsoid(vector![
+            chest_half_size * 1.25,
+            chest_half_size * 1.25,
+            chest_half_size / 2.0
+        ]));
+        chest_node
+            .push_shape(Shape::Ellipsoid(vector![
+                chest_half_size * 1.25,
+                chest_half_size / 2.0,
+                chest_half_size / 2.0
+            ]))
+            .with_transform(|t| t.set_position(point![0.0, chest_size / 2.0, 0.0]));
 
-        let mut bauble_node = rotating_node.push_shape(Shape::Ellipsoid(vector![10.0, 10.0, 10.0]));
-        bauble_node.transform().set_position(point![20.0, 0.0, 0.0]);
-        bauble_node.push_line(
-            Line::new_circle(10.2)
-                .fill(Fill::Dashed(0.8))
-                .thickness(0.4),
-        );
-        let mut bauble_arrow = bauble_node.push_line(Line::new_arrow(5.0).thickness(0.4));
-        bauble_arrow
+        let right_arm_length = 10.0;
+        let mut right_arm_node = chest_node.push_empty();
+        right_arm_node
             .transform()
-            .set_position(point![0.0, 0.0, -10.0]);
-        bauble_arrow
+            .set_position(point![chest_half_size, chest_half_size, 0.0]);
+
+        let mut right_arm_bone_node = right_arm_node.push_empty();
+        right_arm_bone_node
             .transform()
-            .set_rotation(vector![-90.0, 0.0, 0.0]);
+            .set_position(point![0.0, right_arm_length / 2.0, 0.0]);
+
+        right_arm_bone_node.push_line(Line::new(right_arm_length));
+        right_arm_bone_node.push_shape(Shape::Ellipsoid(vector![
+            right_arm_length / 4.0,
+            (right_arm_length / 2.0) * 1.25,
+            right_arm_length / 4.0
+        ]));
 
         Self {
             root_id,
-            bouncing_id,
-            rotating_id,
+            right_arm_id: right_arm_node.node_id(),
         }
     }
 
     fn update_animation(&self, render_graph: &mut RenderGraph, seconds: f32) {
-        render_graph
-            .node_mut(self.rotating_id)
-            .transform()
-            .set_rotation(vector![0.0, (seconds * 40.0) % 360.0, 0.0]);
+        let wiggle = oscillation(seconds, 0.75, 0.0, 1.0);
 
         render_graph
-            .node_mut(self.bouncing_id)
+            .node_mut(self.right_arm_id)
             .transform()
-            .set_position(point![0.0, seconds.sin() * 10.0, 0.0])
+            .set_rotation(Vector3::lerp(
+                &vector![0.0, 0.0, -5.0],
+                &vector![0.0, 0.0, -45.0],
+                wiggle,
+            ))
     }
+}
+
+fn oscillation(seconds: f32, period: f32, min: f32, max: f32) -> f32 {
+    assert!(min < max);
+
+    let o = ((((seconds + (period / 4.0)) * (PI / period) * 2.0).sin() / 2.0) + 0.5) * (max - min)
+        + min;
+
+    assert!(o >= min);
+    assert!(o <= max);
+
+    return o;
 }
 
 fn grid(mut root: NodeMut, size: f32, step: f32) {
@@ -152,7 +190,7 @@ impl App {
 
         let mut ui_node = root_node.push_empty();
         grid(ui_node.push_empty(), 100.0, 5.0);
-        cardinal_arrows(ui_node.push_empty(), 20.0);
+        cardinal_arrows(ui_node.push_empty(), 5.0);
 
         let character = Character::new(&mut root_node.push_empty());
 

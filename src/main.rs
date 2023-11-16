@@ -1,14 +1,15 @@
+use winit::event::StartCause;
+use winit::event_loop::ControlFlow;
+use winit::keyboard::{Key, NamedKey};
 use winit::{
     event::{Event, WindowEvent},
     event_loop::EventLoop,
 };
-use winit::event::StartCause;
-use winit::event_loop::ControlFlow;
-use winit::keyboard::{Key, NamedKey};
 
 use crate::app::App;
 
 mod app;
+mod bones;
 mod geometry;
 mod renderer;
 mod spatial_indexer;
