@@ -1,4 +1,4 @@
-use nalgebra::{matrix, Matrix4, Point3, Vector3};
+use nalgebra::{matrix, vector, Matrix4, Point3, SimdPartialOrd, Vector3};
 
 // Basic primitives to build a surface out of
 
@@ -21,6 +21,14 @@ pub fn ellipsoid(s: Vector3<f32>) -> impl Fn(Point3<f32>) -> f32 {
 
 pub fn sphere(r: f32) -> impl Fn(Point3<f32>) -> f32 {
     ellipsoid(Vector3::new(r, r, r))
+}
+
+pub fn cylinder(r: f32, h: f32) -> impl Fn(Point3<f32>) -> f32 {
+    move |p| {
+        let d = vector![p.xz().coords.magnitude() - 2.0 * r + r, p.y.abs() - h];
+
+        d.x.max(d.y).min(0.0) + d.simd_max(vector![0.0, 0.0]).magnitude()
+    }
 }
 
 // pub fn rotate(

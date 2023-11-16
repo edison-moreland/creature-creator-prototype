@@ -3,7 +3,7 @@ use nalgebra::{point, vector, Matrix4, Point3, RealField, Vector3};
 pub use pipeline::SurfacePipeline;
 
 use crate::renderer::graph::Transform;
-use crate::renderer::surfaces::primitives::ellipsoid;
+use crate::renderer::surfaces::primitives::{cylinder, ellipsoid, quadratic_surface, sphere};
 
 mod pipeline;
 mod primitives;
@@ -12,6 +12,8 @@ mod sampling;
 #[derive(Copy, Clone)]
 pub enum Shape {
     Ellipsoid(Vector3<f32>),
+    Sphere(f32),
+    Cyliner(f32, f32),
 }
 
 pub struct Surface {
@@ -38,6 +40,8 @@ impl Surface {
 
         match s {
             Shape::Ellipsoid(p) => ellipsoid(p)(tat),
+            Shape::Sphere(r) => sphere(r)(tat),
+            Shape::Cyliner(r, h) => cylinder(r, h)(tat),
         }
     }
 
@@ -74,7 +78,6 @@ fn smooth_min(a: f32, b: f32, k: f32) -> f32 {
 }
 
 pub fn seed(surface: &Surface) -> Point3<f32> {
-    // TODO: This method is brittle and panics often (dividing by zero?)
     let mut seed_point = point![rand::random(), rand::random(), rand::random()];
 
     for _ in 0..100 {
@@ -94,7 +97,7 @@ pub fn seed(surface: &Surface) -> Point3<f32> {
 
     if !on_surface(surface, seed_point) {
         dbg!(seed_point);
-        panic!("uh oh!")
+        panic!("could not find a seed point")
     }
 
     seed_point
@@ -113,5 +116,5 @@ pub fn gradient(surface: &Surface, p: Point3<f32>) -> Vector3<f32> {
 }
 
 pub fn on_surface(surface: &Surface, point: Point3<f32>) -> bool {
-    surface.sample(point).abs() <= f32::EPSILON
+    surface.sample(point).abs() <= f32::EPSILON * 2.0
 }
