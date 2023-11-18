@@ -6,6 +6,7 @@ use winit::dpi::{LogicalSize, PhysicalSize};
 use winit::event_loop::EventLoopWindowTarget;
 use winit::window::{Window, WindowBuilder};
 
+use crate::bones::Bone;
 use crate::renderer::graph::{NodeId, NodeMut, RenderGraph};
 use crate::renderer::lines::Line;
 use crate::renderer::surfaces::Shape;
@@ -14,93 +15,42 @@ use crate::renderer::{Camera, Renderer};
 struct Character {
     root_id: NodeId,
 
-    right_arm_id: NodeId,
+    arm: Bone,
+    forearm: Bone,
 }
 
 impl Character {
-    fn new(root_node: &mut NodeMut) -> Self {
+    fn new(render_graph: &mut RenderGraph, root_id: NodeId) -> Self {
+        let mut root_node = render_graph.node_mut(root_id);
+
         root_node.with_transform(|t| {
-            t.set_position(point![0.0, 10.0, 0.0]);
-            t.set_rotation(vector![0.0, 45.0, 0.0])
+            t.position = point![0.0, 0.0, 0.0];
+            t.rotation = vector![0.0, 45.0, 0.0];
         });
         let root_id = root_node.node_id();
 
-        let chest_size = 10.0;
-        let chest_half_size = chest_size / 2.0;
-        let mut chest_node = root_node.push_empty();
-        chest_node
-            .push_line(Line::new(chest_size))
-            .with_transform(|t| t.set_position(point![chest_half_size, 0.0, 0.0]));
-        chest_node
-            .push_line(Line::new(chest_size))
-            .with_transform(|t| t.set_position(point![-chest_half_size, 0.0, 0.0]));
-        chest_node
-            .push_line(Line::new(chest_size))
-            .with_transform(|t| {
-                t.set_rotation(vector![0.0, 0.0, 90.0]);
-                t.set_position(point![0.0, chest_half_size, 0.0])
-            });
-        chest_node
-            .push_line(Line::new(chest_size))
-            .with_transform(|t| {
-                t.set_rotation(vector![0.0, 0.0, 90.0]);
-                t.set_position(point![0.0, -chest_half_size, 0.0])
-            });
-
-        // chest_node.push_shape(Shape::Quadratic(matrix![
-        //     1.0, 0.0, 0.0, 0.0;
-        //     0.0, 1.0, 0.0, 0.0;
-        //     0.0, 0.0, 1.0, 0.0;
-        //     0.0, 0.0, 0.0, -(3.0f32).powf(2.0);
-        // ]));
-        chest_node.push_shape(Shape::Ellipsoid(vector![
-            chest_half_size * 1.25,
-            chest_half_size * 1.25,
-            chest_half_size / 2.0
-        ]));
-        chest_node
-            .push_shape(Shape::Ellipsoid(vector![
-                chest_half_size * 1.25,
-                chest_half_size / 2.0,
-                chest_half_size / 2.0
-            ]))
-            .with_transform(|t| t.set_position(point![0.0, chest_size / 2.0, 0.0]));
-
-        let right_arm_length = 10.0;
-        let mut right_arm_node = chest_node.push_empty();
-        right_arm_node
-            .transform()
-            .set_position(point![chest_half_size, chest_half_size, 0.0]);
-
-        let mut right_arm_bone_node = right_arm_node.push_empty();
-        right_arm_bone_node
-            .transform()
-            .set_position(point![0.0, right_arm_length / 2.0, 0.0]);
-
-        right_arm_bone_node.push_line(Line::new(right_arm_length));
-        right_arm_bone_node.push_shape(Shape::Ellipsoid(vector![
-            right_arm_length / 4.0,
-            (right_arm_length / 2.0) * 1.25,
-            right_arm_length / 4.0
-        ]));
+        let arm = Bone::new(root_node.push_empty(), 10.0, |mut s| {
+            s.push_shape(Shape::Sphere(0.5));
+        });
+        let forearm = Bone::new(render_graph.node_mut(arm.next_joint_id), 10.0, |mut s| {
+            s.push_shape(Shape::Sphere(0.5));
+        });
 
         Self {
             root_id,
-            right_arm_id: right_arm_node.node_id(),
+            arm,
+            forearm,
         }
     }
 
     fn update_animation(&self, render_graph: &mut RenderGraph, seconds: f32) {
         let wiggle = oscillation(seconds, 0.75, 0.0, 1.0);
 
-        render_graph
-            .node_mut(self.right_arm_id)
-            .transform()
-            .set_rotation(Vector3::lerp(
-                &vector![0.0, 0.0, -5.0],
-                &vector![0.0, 0.0, -45.0],
-                wiggle,
-            ))
+        let mut elbow_node = render_graph.node_mut(self.forearm.joint_id);
+
+        elbow_node.with_transform(|t| {
+            t.rotation = Vector3::lerp(&vector![0.0, 0.0, 0.0], &vector![0.0, 0.0, 90.0], wiggle)
+        })
     }
 }
 
@@ -122,16 +72,16 @@ fn grid(mut root: NodeMut, size: f32, step: f32) {
     let mut grid_line_position = start;
     while grid_line_position <= -start {
         let mut x_line = root.push_line(Line::new(size));
-        x_line
-            .transform()
-            .set_position(point![grid_line_position, 0.0, 0.0]);
-        x_line.transform().set_rotation(vector![90.0, 0.0, 0.0]);
+        x_line.with_transform(|t| {
+            t.position = point![grid_line_position, 0.0, 0.0];
+            t.rotation = vector![90.0, 0.0, 0.0];
+        });
 
         let mut y_line = root.push_line(Line::new(size));
-        y_line
-            .transform()
-            .set_position(point![0.0, 0.0, grid_line_position]);
-        y_line.transform().set_rotation(vector![0.0, 0.0, 90.0]);
+        y_line.with_transform(|t| {
+            t.position = point![0.0, 0.0, grid_line_position];
+            t.rotation = vector![0.0, 0.0, 90.0];
+        });
 
         grid_line_position += step
     }
@@ -143,8 +93,9 @@ fn cardinal_arrows(mut root: NodeMut, magnitude: f32) {
             .thickness(0.2)
             .color(vector![1.0, 0.0, 0.0]),
     )
-    .transform()
-    .set_rotation(vector![0.0, 0.0, -90.0]);
+    .with_transform(|t| {
+        t.rotation = vector![0.0, 0.0, -90.0];
+    });
 
     root.push_line(
         Line::new_arrow(magnitude)
@@ -157,8 +108,9 @@ fn cardinal_arrows(mut root: NodeMut, magnitude: f32) {
             .thickness(0.2)
             .color(vector![0.0, 0.0, 1.0]),
     )
-    .transform()
-    .set_rotation(vector![90.0, 0.0, 0.0]);
+    .with_transform(|t| {
+        t.rotation = vector![90.0, 0.0, 0.0];
+    })
 }
 
 pub struct App {
@@ -192,7 +144,9 @@ impl App {
         grid(ui_node.push_empty(), 100.0, 5.0);
         cardinal_arrows(ui_node.push_empty(), 5.0);
 
-        let character = Character::new(&mut root_node.push_empty());
+        let character_node_id = root_node.push_empty().node_id();
+
+        let character = Character::new(&mut render_graph, character_node_id);
 
         App {
             window,
@@ -222,7 +176,7 @@ impl App {
         self.update();
 
         let start = Instant::now();
-        self.renderer.draw_graph(0.52, &self.render_graph);
+        self.renderer.draw_graph(0.4, &self.render_graph);
         self.renderer.commit();
         let draw_duration = start.elapsed();
         dbg!(draw_duration);
