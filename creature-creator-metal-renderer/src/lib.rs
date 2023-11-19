@@ -26,7 +26,6 @@ mod uniforms;
 
 mod geometry;
 mod lines;
-mod spatial_indexer;
 mod surfaces;
 
 fn create_metal_layer(device: &DeviceRef, window: &Window) -> MetalLayer {

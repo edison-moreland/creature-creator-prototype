@@ -3,8 +3,7 @@ use std::mem::size_of;
 use std::time::Instant;
 
 use crate::shared::Shared;
-use crate::surfaces::sampling::{SamplingSystem, MAX_PARTICLE_COUNT};
-use crate::surfaces::Surface;
+use crate::surfaces::sampling::{SamplingSystem, Surface, MAX_PARTICLE_COUNT};
 use crate::uniforms::Uniforms;
 use metal::{
     DepthStencilStateRef, DeviceRef, MTLPixelFormat, MTLPrimitiveType, MTLVertexFormat,

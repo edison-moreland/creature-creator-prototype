@@ -4,11 +4,12 @@ use std::ops::Neg;
 use crate::shared::new_zeroed_box;
 use nalgebra::{vector, Point3, Vector3};
 
-use crate::spatial_indexer::kd_indexer::KdIndexer;
-use crate::spatial_indexer::{Positioned, SpatialIndexer};
 use crate::surfaces::sampling::buffer_allocator::{BufferAllocator, StackBufferAllocator};
 use crate::surfaces::sampling::initial_sampling::sample;
-use crate::surfaces::{gradient, Surface};
+use crate::surfaces::sampling::spatial_indexer::kd_indexer::KdIndexer;
+use crate::surfaces::sampling::spatial_indexer::{Positioned, SpatialIndexer};
+use crate::surfaces::sampling::surface::gradient;
+use crate::surfaces::Surface;
 
 // Using Particles to Sample and Control Implicit Surfaces.
 // Andrew P. Witkin, Paul S. Heckbert
