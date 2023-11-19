@@ -1,13 +1,14 @@
 use std::mem::size_of;
 
-use crate::shared::Shared;
-use crate::uniforms::Uniforms;
 use metal::{
     DepthStencilStateRef, DeviceRef, MTLPixelFormat, MTLPrimitiveType, MTLVertexFormat,
     MTLVertexStepFunction, NSUInteger, RenderCommandEncoderRef, RenderPipelineDescriptor,
     RenderPipelineState, VertexAttributeDescriptor, VertexBufferLayoutDescriptor, VertexDescriptor,
 };
 use nalgebra::{Point3, Vector3};
+
+use crate::shared::Shared;
+use crate::uniforms::Uniforms;
 
 const VERTEX_COUNT: usize = 4;
 // Just a quad

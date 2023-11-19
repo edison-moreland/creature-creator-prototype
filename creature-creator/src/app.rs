@@ -1,16 +1,18 @@
 use std::f32::consts::PI;
 use std::time::Instant;
 
-use creature_creator_metal_renderer::MetalRenderer;
-use creature_creator_renderer::lines::Line;
-use creature_creator_renderer::shapes::Shape;
-use creature_creator_renderer::{Camera, NodeId, NodeMut, RenderGraph, Renderer};
 use nalgebra::{point, vector, Vector3};
 use winit::dpi::{LogicalSize, PhysicalSize};
 use winit::event_loop::EventLoopWindowTarget;
 use winit::window::{Window, WindowBuilder};
 
+use creature_creator_metal_renderer::MetalRenderer;
+use creature_creator_renderer::{Camera, NodeId, NodeMut, Renderer, RenderGraph};
+use creature_creator_renderer::lines::Line;
+use creature_creator_renderer::shapes::Shape;
+
 use crate::bones::Bone;
+
 struct Character {
     root_id: NodeId,
 

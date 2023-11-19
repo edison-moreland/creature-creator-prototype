@@ -1,6 +1,8 @@
-use crate::surfaces::sampling::primitives::{cylinder, ellipsoid, sphere};
+use nalgebra::{Matrix4, point, Point3, vector, Vector3};
+
 use creature_creator_renderer::shapes::Shape;
-use nalgebra::{point, vector, Matrix4, Point3, Vector3};
+
+use crate::surfaces::sampling::primitives::{cylinder, ellipsoid, sphere};
 
 pub struct Surface {
     shapes: Vec<(Matrix4<f32>, Shape)>,

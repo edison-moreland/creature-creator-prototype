@@ -2,14 +2,15 @@ use std::f32::consts::PI;
 use std::mem::size_of;
 use std::time::Instant;
 
-use crate::shared::Shared;
-use crate::surfaces::sampling::{SamplingSystem, Surface, MAX_PARTICLE_COUNT};
-use crate::uniforms::Uniforms;
 use metal::{
     DepthStencilStateRef, DeviceRef, MTLPixelFormat, MTLPrimitiveType, MTLVertexFormat,
     MTLVertexStepFunction, NSUInteger, RenderCommandEncoderRef, RenderPipelineDescriptor,
     RenderPipelineState, VertexAttributeDescriptor, VertexBufferLayoutDescriptor, VertexDescriptor,
 };
+
+use crate::shared::Shared;
+use crate::surfaces::sampling::{MAX_PARTICLE_COUNT, SamplingSystem, Surface};
+use crate::uniforms::Uniforms;
 
 const SPHERE_SLICES: f32 = 16.0 / 2.0;
 const SPHERE_RINGS: f32 = 16.0 / 2.0;

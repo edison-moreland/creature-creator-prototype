@@ -1,4 +1,5 @@
 use std::f32::consts::PI;
+
 use nalgebra::{Matrix4, point, Point3, Rotation3, Scale3, Translation3, vector, Vector3};
 
 #[derive(Clone, Copy)]
@@ -30,6 +31,7 @@ impl NodeTransform {
 #[cfg(test)]
 mod tests {
     use nalgebra::{point, vector};
+
     use crate::transform::NodeTransform;
 
     #[test]

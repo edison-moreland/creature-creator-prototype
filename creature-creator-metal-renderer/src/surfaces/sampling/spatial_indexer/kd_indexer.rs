@@ -3,8 +3,9 @@ use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::ops::Index;
 
-use crate::surfaces::sampling::spatial_indexer::{Positioned, SpatialIndexer};
 use nalgebra::Point3;
+
+use crate::surfaces::sampling::spatial_indexer::{Positioned, SpatialIndexer};
 
 // KD_LEAF_SIZE controls the max size of leaf nodes. 100 was chosen after some testing
 const KD_LEAF_SIZE: usize = 100;

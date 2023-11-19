@@ -1,4 +1,4 @@
-use nalgebra::{matrix, vector, Matrix4, Point3, SimdPartialOrd, Vector3};
+use nalgebra::{matrix, Matrix4, Point3, SimdPartialOrd, vector, Vector3};
 
 // Basic primitives to build a surface out of
 

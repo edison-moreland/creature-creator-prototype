@@ -1,5 +1,6 @@
-use nalgebra::{Isometry3, Perspective3, Point3, Vector3};
 use std::f32::consts::PI;
+
+use nalgebra::{Isometry3, Perspective3, Point3, Vector3};
 
 pub struct Camera {
     eye: Point3<f32>,

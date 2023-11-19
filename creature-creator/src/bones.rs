@@ -1,6 +1,7 @@
-use creature_creator_renderer::lines::Line;
-use creature_creator_renderer::{NodeId, NodeMut};
 use nalgebra::vector;
+
+use creature_creator_renderer::{NodeId, NodeMut};
+use creature_creator_renderer::lines::Line;
 
 pub struct Bone {
     // This is the node that gets rotated to move the bone
