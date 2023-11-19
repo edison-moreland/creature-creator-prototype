@@ -12,20 +12,22 @@ use winit::dpi::PhysicalSize;
 use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
 use winit::window::Window;
 
+use crate::lines::line_segments;
+use creature_creator_renderer::{Camera, Kind, RenderGraph, Renderer};
 use surfaces::SurfacePipeline;
 use uniforms::Uniforms;
 
-use crate::renderer::graph::{Kind, RenderGraph};
-use crate::renderer::lines::pipeline::LinePipeline;
-use crate::renderer::shared::Shared;
-use crate::renderer::surfaces::Surface;
-pub use crate::renderer::uniforms::Camera;
+use crate::lines::pipeline::LinePipeline;
+use crate::shared::Shared;
+use crate::surfaces::Surface;
 
-pub mod graph;
-pub mod lines;
 mod shared;
-pub mod surfaces;
 mod uniforms;
+
+mod geometry;
+mod lines;
+mod spatial_indexer;
+mod surfaces;
 
 fn create_metal_layer(device: &DeviceRef, window: &Window) -> MetalLayer {
     let layer = MetalLayer::new();
@@ -72,7 +74,7 @@ fn create_depth_state(device: &DeviceRef) -> DepthStencilState {
     device.new_depth_stencil_state(&depth_stencil_descriptor)
 }
 
-pub struct Renderer {
+pub struct MetalRenderer {
     device: Device,
     layer: MetalLayer,
     command_queue: CommandQueue,
@@ -87,7 +89,7 @@ pub struct Renderer {
     line_pipeline: LinePipeline,
 }
 
-impl Renderer {
+impl MetalRenderer {
     pub fn new(window: &Window, mut camera: Camera) -> Self {
         let device = Device::system_default().expect("no device found");
         let command_queue = device.new_command_queue();
@@ -106,7 +108,7 @@ impl Renderer {
 
         let widget_pipeline = LinePipeline::new(&device);
 
-        Renderer {
+        MetalRenderer {
             device,
             layer,
             command_queue,
@@ -117,57 +119,6 @@ impl Renderer {
             sphere_pipeline,
             line_pipeline: widget_pipeline,
         }
-    }
-
-    pub fn resized(&mut self, new_size: PhysicalSize<u32>) {
-        self.layer
-            .set_drawable_size(CGSize::new(new_size.width as f64, new_size.height as f64));
-
-        self.depth_target = prepare_depth_target(&self.device, new_size);
-
-        self.camera
-            .aspect_ratio_updated(new_size.width as f32 / new_size.height as f32);
-        self.uniforms.camera_updated(&self.camera)
-    }
-
-    pub fn rescaled(&self, scale_factor: f64) {
-        self.layer.set_contents_scale(scale_factor);
-    }
-
-    pub fn draw_graph(&mut self, surface_sample_radius: f32, graph: &RenderGraph) {
-        let mut surface = Surface::new();
-        let mut line_segments = vec![];
-
-        graph.walk(|transform, kind| match kind {
-            Kind::Line(l) => l.line_segments(&mut line_segments, &transform),
-            Kind::Shape(s) => surface.push(
-                transform.try_inverse().expect("transform can be inverted"),
-                *s,
-            ),
-        });
-
-        if !surface.empty() {
-            self.sphere_pipeline
-                .draw_surface(&surface, surface_sample_radius);
-        }
-        self.line_pipeline.draw_line_segments(line_segments)
-    }
-
-    pub fn commit(&mut self) {
-        let drawable = match self.layer.next_drawable() {
-            Some(drawable) => drawable,
-            None => return,
-        };
-
-        self.render_pass(drawable, |encoder| {
-            self.sphere_pipeline
-                .encode_commands(&self.depth_state, &self.uniforms)(encoder);
-            self.line_pipeline
-                .encode_commands(&self.depth_state, &self.uniforms)(encoder);
-        });
-
-        self.sphere_pipeline.reset();
-        self.line_pipeline.reset();
     }
 
     fn render_pass<F>(&self, drawable: &MetalDrawableRef, f: F)
@@ -195,5 +146,57 @@ impl Renderer {
         encoder.end_encoding();
         command_buffer.present_drawable(drawable);
         command_buffer.commit();
+    }
+}
+
+impl Renderer for MetalRenderer {
+    fn resized(&mut self, new_size: PhysicalSize<u32>) {
+        self.layer
+            .set_drawable_size(CGSize::new(new_size.width as f64, new_size.height as f64));
+
+        self.depth_target = prepare_depth_target(&self.device, new_size);
+
+        self.camera
+            .aspect_ratio_updated(new_size.width as f32 / new_size.height as f32);
+        self.uniforms.camera_updated(&self.camera)
+    }
+
+    fn rescaled(&mut self, new_scale_factor: f64) {
+        self.layer.set_contents_scale(new_scale_factor);
+    }
+
+    fn draw(&mut self, graph: &RenderGraph) {
+        let mut surface = Surface::new();
+        let mut segments = vec![];
+
+        graph.walk(|transform, kind| match kind {
+            Kind::Line(l) => line_segments(l, &mut segments, &transform),
+            Kind::Shape(s) => surface.push(
+                transform.try_inverse().expect("transform can be inverted"),
+                *s,
+            ),
+        });
+
+        // TODO: This looks silly now that's it's not broken into multiple functions
+        //       We should give the primitives when we encode instead of this draw/encode/reset dance
+        if !surface.empty() {
+            self.sphere_pipeline.draw_surface(&surface, 0.4);
+        }
+        self.line_pipeline.draw_line_segments(segments);
+
+        let drawable = match self.layer.next_drawable() {
+            Some(drawable) => drawable,
+            None => return,
+        };
+
+        self.render_pass(drawable, |encoder| {
+            self.sphere_pipeline
+                .encode_commands(&self.depth_state, &self.uniforms)(encoder);
+            self.line_pipeline
+                .encode_commands(&self.depth_state, &self.uniforms)(encoder);
+        });
+
+        self.sphere_pipeline.reset();
+        self.line_pipeline.reset();
     }
 }

@@ -1,17 +1,16 @@
 use std::f32::consts::PI;
 use std::time::Instant;
 
+use creature_creator_metal_renderer::MetalRenderer;
+use creature_creator_renderer::lines::Line;
+use creature_creator_renderer::shapes::Shape;
+use creature_creator_renderer::{Camera, NodeId, NodeMut, RenderGraph, Renderer};
 use nalgebra::{point, vector, Vector3};
 use winit::dpi::{LogicalSize, PhysicalSize};
 use winit::event_loop::EventLoopWindowTarget;
 use winit::window::{Window, WindowBuilder};
 
 use crate::bones::Bone;
-use crate::renderer::graph::{NodeId, NodeMut, RenderGraph};
-use crate::renderer::lines::Line;
-use crate::renderer::surfaces::Shape;
-use crate::renderer::{Camera, Renderer};
-
 struct Character {
     root_id: NodeId,
 
@@ -120,7 +119,7 @@ pub struct App {
     start: Instant,
     character: Character,
 
-    renderer: Renderer,
+    renderer: MetalRenderer,
     render_graph: RenderGraph,
 }
 
@@ -132,7 +131,7 @@ impl App {
             .build(event_loop)
             .unwrap();
 
-        let renderer = Renderer::new(
+        let renderer = MetalRenderer::new(
             &window,
             Camera::new(point![40.0, 40.0, 40.0], point![0.0, 0.0, 0.0], 60.0),
         );
@@ -157,7 +156,7 @@ impl App {
         }
     }
 
-    pub fn scale_factor_changed(&self, scale_factor: f64) {
+    pub fn scale_factor_changed(&mut self, scale_factor: f64) {
         self.renderer.rescaled(scale_factor);
     }
 
@@ -176,8 +175,7 @@ impl App {
         self.update();
 
         let start = Instant::now();
-        self.renderer.draw_graph(0.4, &self.render_graph);
-        self.renderer.commit();
+        self.renderer.draw(&self.render_graph);
         let draw_duration = start.elapsed();
         dbg!(draw_duration);
     }

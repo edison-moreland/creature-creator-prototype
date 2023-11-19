@@ -1,4 +1,4 @@
-use std::alloc::{alloc, alloc_zeroed, Layout};
+use std::alloc::{alloc_zeroed, Layout};
 use std::mem;
 use std::mem::size_of;
 use std::ops::{Deref, DerefMut};
@@ -32,6 +32,7 @@ impl<T: Sized> Shared<T> {
     }
 
     pub fn from_pinned(device: &DeviceRef, value: Pin<Box<T>>) -> Self {
+        // TODO: This needs to be page aligned
         let buffer = device.new_buffer_with_bytes_no_copy(
             addr_of!(*value.deref()) as *const _,
             size_of::<T>() as u64,

@@ -1,23 +1,12 @@
-[package]
-name = "creature_creator"
-version = "0.1.0"
-edition = "2021"
 
 [profile.release]
 #debug = true
 lto = "fat"
 codegen-units = 1
 
-[dependencies]
-nalgebra = "0.32.3"
-rand = "0.8.5"
-#rayon = "1.8.0"
-
-generational-arena = "0.2.9"
-
-winit = "0.29.2"
-
-# Metal deps:
-metal = "0.27.0"
-cocoa = "0.25.0"
-core-graphics-types = "0.1"
+[workspace]
+members = [
+    "creature-creator",
+    "creature-creator-renderer",
+    "creature-creator-metal-renderer"
+]

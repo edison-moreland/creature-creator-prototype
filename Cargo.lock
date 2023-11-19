@@ -296,15 +296,34 @@ dependencies = [
 ]
 
 [[package]]
-name = "creature_creator"
+name = "creature-creator"
+version = "0.1.0"
+dependencies = [
+ "creature-creator-metal-renderer",
+ "creature-creator-renderer",
+ "nalgebra",
+ "winit",
+]
+
+[[package]]
+name = "creature-creator-metal-renderer"
 version = "0.1.0"
 dependencies = [
  "cocoa",
  "core-graphics-types",
- "generational-arena",
+ "creature-creator-renderer",
  "metal",
  "nalgebra",
  "rand",
+ "winit",
+]
+
+[[package]]
+name = "creature-creator-renderer"
+version = "0.1.0"
+dependencies = [
+ "generational-arena",
+ "nalgebra",
  "winit",
 ]
 

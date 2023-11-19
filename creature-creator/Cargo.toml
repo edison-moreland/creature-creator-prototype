@@ -1,0 +1,15 @@
+[package]
+name = "creature-creator"
+version = "0.1.0"
+edition = "2021"
+
+
+
+[dependencies]
+creature-creator-renderer = { path = "../creature-creator-renderer"}
+creature-creator-metal-renderer = { path = "../creature-creator-metal-renderer"}
+
+nalgebra = "0.32.3"
+
+winit = "0.29.2"
+

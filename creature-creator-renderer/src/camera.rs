@@ -1,32 +1,5 @@
-use std::f32::consts::PI;
-use std::mem::size_of;
-
 use nalgebra::{Isometry3, Perspective3, Point3, Vector3};
-
-// Uniforms are shared between all render passes
-
-#[repr(C)]
-pub struct Uniforms {
-    camera: [[f32; 4]; 4],
-    camera_position: [f32; 3],
-    _wtf: [f32; 4],
-}
-
-impl Uniforms {
-    pub fn new(camera: &Camera) -> Self {
-        Self {
-            camera: camera.mvp_matrix(),
-            camera_position: camera.eye.coords.data.0[0],
-            _wtf: [0.0; 4],
-        }
-    }
-
-    pub fn camera_updated(&mut self, camera: &Camera) {
-        self.camera = camera.mvp_matrix();
-        self.camera_position = camera.eye.coords.data.0[0];
-        dbg!(size_of::<Self>());
-    }
-}
+use std::f32::consts::PI;
 
 pub struct Camera {
     eye: Point3<f32>,
@@ -49,7 +22,10 @@ impl Camera {
         self.aspect_ratio = aspect_ratio
     }
 
-    fn mvp_matrix(&self) -> [[f32; 4]; 4] {
+    pub fn position(&self) -> [f32; 3] {
+        self.eye.coords.data.0[0]
+    }
+    pub fn mvp_matrix(&self) -> [[f32; 4]; 4] {
         let view = Isometry3::look_at_rh(&self.eye, &self.target, &Vector3::y());
 
         let proj = Perspective3::new(self.aspect_ratio, self.fov * (180.0 / PI), 0.01, 10000.0);

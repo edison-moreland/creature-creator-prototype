@@ -1,20 +1,12 @@
-use nalgebra::{point, vector, Matrix4, Point3, RealField, Vector3};
+use creature_creator_renderer::shapes::Shape;
+use nalgebra::{point, vector, Matrix4, Point3, Vector3};
 
+use crate::surfaces::primitives::{cylinder, ellipsoid, sphere};
 pub use pipeline::SurfacePipeline;
-
-use crate::renderer::graph::NodeTransform;
-use crate::renderer::surfaces::primitives::{cylinder, ellipsoid, quadratic_surface, sphere};
 
 mod pipeline;
 mod primitives;
 mod sampling;
-
-#[derive(Copy, Clone)]
-pub enum Shape {
-    Ellipsoid(Vector3<f32>),
-    Sphere(f32),
-    Cyliner(f32, f32),
-}
 
 pub struct Surface {
     shapes: Vec<(Matrix4<f32>, Shape)>,

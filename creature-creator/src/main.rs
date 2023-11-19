@@ -10,9 +10,6 @@ use crate::app::App;
 
 mod app;
 mod bones;
-mod geometry;
-mod renderer;
-mod spatial_indexer;
 
 fn main() {
     let event_loop = EventLoop::new().unwrap();
@@ -28,7 +25,7 @@ fn main() {
             Event::WindowEvent { event, .. } => match event {
                 WindowEvent::CloseRequested => event_loop.exit(),
                 WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
-                    app.as_ref().unwrap().scale_factor_changed(scale_factor);
+                    app.as_mut().unwrap().scale_factor_changed(scale_factor);
                 }
                 WindowEvent::Resized(size) => app.as_mut().unwrap().resized(size),
                 WindowEvent::KeyboardInput { event, .. } => {
