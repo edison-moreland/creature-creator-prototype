@@ -1,14 +1,13 @@
 use std::mem::size_of;
 
 use metal::{
-    DepthStencilStateRef, DeviceRef, MTLPixelFormat, MTLPrimitiveType, MTLVertexFormat,
-    MTLVertexStepFunction, NSUInteger, RenderCommandEncoderRef, RenderPipelineDescriptor,
-    RenderPipelineState, VertexAttributeDescriptor, VertexBufferLayoutDescriptor, VertexDescriptor,
+    DeviceRef, MTLPixelFormat, MTLPrimitiveType, MTLVertexFormat, MTLVertexStepFunction,
+    NSUInteger, RenderCommandEncoderRef, RenderPipelineDescriptor, RenderPipelineState,
+    VertexAttributeDescriptor, VertexBufferLayoutDescriptor, VertexDescriptor,
 };
 use nalgebra::{Point3, Vector3};
 
 use crate::shared::Shared;
-use crate::uniforms::Uniforms;
 
 const VERTEX_COUNT: usize = 4;
 // Just a quad
@@ -222,36 +221,24 @@ impl LinePipeline {
 
 // Drawing
 impl LinePipeline {
-    pub fn draw_line_segments(&mut self, segments: Vec<LineSegment>) {
+    fn encode(&self, encoder: &RenderCommandEncoderRef) {
+        encoder.set_render_pipeline_state(&self.pipeline);
+        encoder.set_vertex_buffer(0, Some(self.vertices.buffer()), 0);
+        encoder.set_vertex_buffer(1, Some(self.segments.buffer()), 0);
+
+        encoder.draw_primitives_instanced(
+            MTLPrimitiveType::TriangleStrip,
+            0,
+            VERTEX_COUNT as NSUInteger,
+            self.segment_count as NSUInteger,
+        )
+    }
+
+    pub fn draw(&mut self, encoder: &RenderCommandEncoderRef, segments: Vec<LineSegment>) {
         let segment_count = segments.len();
+        self.segments[..segment_count].copy_from_slice(&segments);
+        self.segment_count = segment_count;
 
-        self.segments[self.segment_count..self.segment_count + segment_count]
-            .copy_from_slice(&segments);
-        self.segment_count += segment_count;
-    }
-
-    pub fn reset(&mut self) {
-        self.segment_count = 0;
-    }
-
-    pub fn encode_commands<'a>(
-        &'a self,
-        depth_stencil: &'a DepthStencilStateRef,
-        uniforms: &'a Shared<Uniforms>,
-    ) -> impl FnOnce(&RenderCommandEncoderRef) + 'a {
-        move |encoder| {
-            encoder.set_render_pipeline_state(&self.pipeline);
-            encoder.set_depth_stencil_state(depth_stencil);
-            encoder.set_vertex_buffer(0, Some(self.vertices.buffer()), 0);
-            encoder.set_vertex_buffer(1, Some(self.segments.buffer()), 0);
-            encoder.set_vertex_buffer(2, Some(uniforms.buffer()), 0);
-
-            encoder.draw_primitives_instanced(
-                MTLPrimitiveType::TriangleStrip,
-                0,
-                VERTEX_COUNT as NSUInteger,
-                self.segment_count as NSUInteger,
-            )
-        }
+        self.encode(encoder);
     }
 }

@@ -3,14 +3,13 @@ use std::mem::size_of;
 use std::time::Instant;
 
 use metal::{
-    DepthStencilStateRef, DeviceRef, MTLPixelFormat, MTLPrimitiveType, MTLVertexFormat,
-    MTLVertexStepFunction, NSUInteger, RenderCommandEncoderRef, RenderPipelineDescriptor,
-    RenderPipelineState, VertexAttributeDescriptor, VertexBufferLayoutDescriptor, VertexDescriptor,
+    DeviceRef, MTLPixelFormat, MTLPrimitiveType, MTLVertexFormat, MTLVertexStepFunction,
+    NSUInteger, RenderCommandEncoderRef, RenderPipelineDescriptor, RenderPipelineState,
+    VertexAttributeDescriptor, VertexBufferLayoutDescriptor, VertexDescriptor,
 };
 
 use crate::shared::Shared;
-use crate::surfaces::sampling::{MAX_PARTICLE_COUNT, SamplingSystem, Surface};
-use crate::uniforms::Uniforms;
+use crate::surfaces::sampling::{SamplingSystem, Surface, MAX_PARTICLE_COUNT};
 
 const SPHERE_SLICES: f32 = 16.0 / 2.0;
 const SPHERE_RINGS: f32 = 16.0 / 2.0;
@@ -191,7 +190,7 @@ impl SurfacePipeline {
 
 // Drawing
 impl SurfacePipeline {
-    pub fn draw_surface(&mut self, surface: &Surface, sample_radius: f32) {
+    fn sample_surface(&mut self, surface: &Surface, sample_radius: f32) {
         let start = Instant::now();
 
         self.sampling_system.update(sample_radius, surface);
@@ -212,32 +211,26 @@ impl SurfacePipeline {
         dbg!(sampling_duration);
     }
 
-    pub fn reset(&mut self) {
-        self.instance_count = 0; // Mostly here for consistency
+    fn encode(&self, encoder: &RenderCommandEncoderRef) {
+        encoder.set_render_pipeline_state(&self.pipeline);
+        encoder.set_vertex_buffer(0, Some(self.vertices.buffer()), 0);
+        encoder.set_vertex_buffer(1, Some(self.instances.buffer()), 0);
+
+        encoder.draw_primitives_instanced(
+            MTLPrimitiveType::Triangle,
+            0,
+            SPHERE_VERTEX_COUNT as NSUInteger,
+            self.instance_count as NSUInteger,
+        )
     }
 
-    pub fn encode_commands<'a>(
-        &'a self,
-        depth_stencil: &'a DepthStencilStateRef,
-        uniforms: &'a Shared<Uniforms>,
-    ) -> impl FnOnce(&RenderCommandEncoderRef) + 'a {
-        move |encoder| {
-            if self.instance_count == 0 {
-                return;
-            }
-
-            encoder.set_render_pipeline_state(&self.pipeline);
-            encoder.set_depth_stencil_state(depth_stencil);
-            encoder.set_vertex_buffer(0, Some(self.vertices.buffer()), 0);
-            encoder.set_vertex_buffer(1, Some(self.instances.buffer()), 0);
-            encoder.set_vertex_buffer(2, Some(uniforms.buffer()), 0);
-
-            encoder.draw_primitives_instanced(
-                MTLPrimitiveType::Triangle,
-                0,
-                SPHERE_VERTEX_COUNT as NSUInteger,
-                self.instance_count as NSUInteger,
-            )
-        }
+    pub fn draw(
+        &mut self,
+        encoder: &RenderCommandEncoderRef,
+        surface: &Surface,
+        sample_radius: f32,
+    ) {
+        self.sample_surface(surface, sample_radius);
+        self.encode(encoder);
     }
 }

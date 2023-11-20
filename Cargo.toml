@@ -5,6 +5,7 @@ lto = "fat"
 codegen-units = 1
 
 [workspace]
+resolver = "2"
 members = [
     "creature-creator",
     "creature-creator-renderer",

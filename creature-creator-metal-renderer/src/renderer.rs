@@ -2,9 +2,9 @@ use cocoa::appkit::NSView;
 use cocoa::base::id;
 use core_graphics_types::geometry::CGSize;
 use metal::{
-    CommandQueue, DepthStencilDescriptor, DepthStencilState, Device, DeviceRef, MetalDrawableRef,
-    MetalLayer, MTLClearColor, MTLCompareFunction, MTLLoadAction, MTLPixelFormat,
-    MTLStorageMode, MTLStoreAction, MTLTextureUsage, RenderCommandEncoderRef, Texture,
+    CommandQueue, DepthStencilDescriptor, DepthStencilState, Device, DeviceRef, MetalLayer,
+    MTLClearColor, MTLCompareFunction, MTLLoadAction, MTLPixelFormat, MTLStorageMode,
+    MTLStoreAction, MTLTextureUsage, Texture,
     TextureDescriptor,
 };
 use metal::objc::runtime::YES;
@@ -110,33 +110,6 @@ impl MetalRenderer {
             line_pipeline: widget_pipeline,
         }
     }
-
-    fn render_pass<F>(&self, drawable: &MetalDrawableRef, f: F)
-    where
-        F: FnOnce(&RenderCommandEncoderRef),
-    {
-        let render_pass = metal::RenderPassDescriptor::new();
-        let color_attachment = render_pass.color_attachments().object_at(0).unwrap();
-        color_attachment.set_texture(Some(drawable.texture()));
-        color_attachment.set_load_action(MTLLoadAction::Clear);
-        color_attachment.set_clear_color(MTLClearColor::new(0.960, 0.991, 0.960, 1.0));
-        color_attachment.set_store_action(MTLStoreAction::Store);
-
-        let depth_attachment = render_pass.depth_attachment().unwrap();
-        depth_attachment.set_texture(Some(&self.depth_target));
-        depth_attachment.set_clear_depth(1.0);
-        depth_attachment.set_load_action(MTLLoadAction::Clear);
-        depth_attachment.set_store_action(MTLStoreAction::DontCare);
-
-        let command_buffer = self.command_queue.new_command_buffer();
-        let encoder = command_buffer.new_render_command_encoder(render_pass);
-
-        f(encoder);
-
-        encoder.end_encoding();
-        command_buffer.present_drawable(drawable);
-        command_buffer.commit();
-    }
 }
 
 impl Renderer for MetalRenderer {
@@ -167,26 +140,38 @@ impl Renderer for MetalRenderer {
             ),
         });
 
-        // TODO: This looks silly now that's it's not broken into multiple functions
-        //       We should give the primitives when we encode instead of this draw/encode/reset dance
-        if !surface.empty() {
-            self.sphere_pipeline.draw_surface(&surface, 0.4);
-        }
-        self.line_pipeline.draw_line_segments(segments);
-
         let drawable = match self.layer.next_drawable() {
             Some(drawable) => drawable,
             None => return,
         };
 
-        self.render_pass(drawable, |encoder| {
-            self.sphere_pipeline
-                .encode_commands(&self.depth_state, &self.uniforms)(encoder);
-            self.line_pipeline
-                .encode_commands(&self.depth_state, &self.uniforms)(encoder);
-        });
+        let render_pass = metal::RenderPassDescriptor::new();
+        let color_attachment = render_pass.color_attachments().object_at(0).unwrap();
+        color_attachment.set_texture(Some(drawable.texture()));
+        color_attachment.set_load_action(MTLLoadAction::Clear);
+        color_attachment.set_clear_color(MTLClearColor::new(0.960, 0.991, 0.960, 1.0));
+        color_attachment.set_store_action(MTLStoreAction::Store);
 
-        self.sphere_pipeline.reset();
-        self.line_pipeline.reset();
+        let depth_attachment = render_pass.depth_attachment().unwrap();
+        depth_attachment.set_texture(Some(&self.depth_target));
+        depth_attachment.set_clear_depth(1.0);
+        depth_attachment.set_load_action(MTLLoadAction::Clear);
+        depth_attachment.set_store_action(MTLStoreAction::DontCare);
+
+        let command_buffer = self.command_queue.new_command_buffer();
+        let encoder = command_buffer.new_render_command_encoder(render_pass);
+
+        if !surface.empty() {
+            encoder.set_depth_stencil_state(&self.depth_state);
+            encoder.set_vertex_buffer(2, Some(self.uniforms.buffer()), 0);
+            self.sphere_pipeline.draw(encoder, &surface, 0.4);
+        }
+        encoder.set_depth_stencil_state(&self.depth_state);
+        encoder.set_vertex_buffer(2, Some(self.uniforms.buffer()), 0);
+        self.line_pipeline.draw(encoder, segments);
+
+        encoder.end_encoding();
+        command_buffer.present_drawable(drawable);
+        command_buffer.commit();
     }
 }
