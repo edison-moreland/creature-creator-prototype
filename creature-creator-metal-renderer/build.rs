@@ -2,9 +2,12 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+const XCODE_CONFIGURATION_ENV: &'static str = "CONFIGURATION";
+
 fn main() {
     compile_shader(&PathBuf::from("src/surfaces/sphere_shader.metal"));
     compile_shader(&PathBuf::from("src/lines/line_shader.metal"));
+    generate_swift_bridge(vec!["src/lines/mod.rs"], "swift-generated")
 }
 
 fn compile_shader(shader_source: &Path) {
@@ -60,4 +63,14 @@ stderr: {}
             String::from_utf8(output.stderr).unwrap()
         );
     }
+}
+
+fn generate_swift_bridge(bridges: Vec<&str>, out: &str) {
+    for path in &bridges {
+        println!("cargo:rerun-if-changed={}", path);
+    }
+    println!("cargo:rerun-if-env-changed={}", XCODE_CONFIGURATION_ENV);
+    println!("cargo:rerun-if-changed={}", out);
+
+    swift_bridge_build::parse_bridges(bridges).write_all_concatenated(out, env!("CARGO_PKG_NAME"));
 }

@@ -54,6 +54,32 @@ impl LineSegment {
             t_offset,
         }
     }
+
+    pub fn new_ugly(
+        a_x: f32,
+        a_y: f32,
+        a_z: f32,
+        b_x: f32,
+        b_y: f32,
+        b_z: f32,
+        color_r: f32,
+        color_g: f32,
+        color_b: f32,
+        thickness: f32,
+        segment_size: f32,
+        style: u32,
+        t_offset: f32,
+    ) -> Self {
+        Self {
+            start: [a_x, a_y, a_z],
+            end: [b_x, b_y, b_z],
+            color: [color_r, color_g, color_b],
+            thickness,
+            segment_size,
+            style,
+            t_offset,
+        }
+    }
 }
 
 pub struct LinePipeline {

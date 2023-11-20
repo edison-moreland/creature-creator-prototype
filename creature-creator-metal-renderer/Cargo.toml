@@ -3,8 +3,13 @@ name = "creature-creator-metal-renderer"
 version = "0.1.0"
 edition = "2021"
 
+[build-dependencies]
+swift-bridge-build = "0.1"
+
 [dependencies]
 creature-creator-renderer = { path = "../creature-creator-renderer"}
+
+swift-bridge = "0.1"
 
 nalgebra = "0.32.3"
 
@@ -16,4 +21,3 @@ winit = "0.29.2"
 metal = "0.27.0"
 cocoa = "0.25.0"
 core-graphics-types = "0.1"
-
