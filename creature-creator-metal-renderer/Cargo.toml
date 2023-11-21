@@ -3,6 +3,9 @@ name = "creature-creator-metal-renderer"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+crate-type = ["lib", "staticlib"]
+
 [build-dependencies]
 swift-bridge-build = "0.1"
 
@@ -15,7 +18,7 @@ nalgebra = "0.32.3"
 
 rand = "0.8.5"
 
-winit = "0.29.2"
+raw-window-handle = "0.6.0"
 
 # Metal deps:
 metal = "0.27.0"

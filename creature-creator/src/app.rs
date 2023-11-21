@@ -4,12 +4,13 @@ use std::time::Instant;
 use nalgebra::{point, vector, Vector3};
 use winit::dpi::{LogicalSize, PhysicalSize};
 use winit::event_loop::EventLoopWindowTarget;
+use winit::raw_window_handle::HasWindowHandle;
 use winit::window::{Window, WindowBuilder};
 
 use creature_creator_metal_renderer::MetalRenderer;
-use creature_creator_renderer::{Camera, NodeId, NodeMut, Renderer, RenderGraph};
 use creature_creator_renderer::lines::Line;
 use creature_creator_renderer::shapes::Shape;
+use creature_creator_renderer::{Camera, NodeId, NodeMut, RenderGraph, Renderer};
 
 use crate::bones::Bone;
 
@@ -133,10 +134,13 @@ impl App {
             .build(event_loop)
             .unwrap();
 
-        let renderer = MetalRenderer::new(
-            &window,
+        let mut renderer = MetalRenderer::new(
+            &window.window_handle().unwrap(),
             Camera::new(point![40.0, 40.0, 40.0], point![0.0, 0.0, 0.0], 60.0),
         );
+        renderer.rescaled(window.scale_factor());
+        let size = window.inner_size();
+        renderer.resized((size.width, size.height));
 
         let mut render_graph = RenderGraph::new();
         let mut root_node = render_graph.root_mut();
@@ -163,7 +167,7 @@ impl App {
     }
 
     pub fn resized(&mut self, new_size: PhysicalSize<u32>) {
-        self.renderer.resized(new_size);
+        self.renderer.resized((new_size.width, new_size.height));
     }
 
     fn update(&mut self) {

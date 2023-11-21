@@ -315,9 +315,9 @@ dependencies = [
  "metal",
  "nalgebra",
  "rand",
+ "raw-window-handle",
  "swift-bridge",
  "swift-bridge-build",
- "winit",
 ]
 
 [[package]]

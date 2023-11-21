@@ -1,32 +1,28 @@
 use cocoa::appkit::NSView;
 use cocoa::base::id;
 use core_graphics_types::geometry::CGSize;
-use metal::{
-    CommandQueue, DepthStencilDescriptor, DepthStencilState, Device, DeviceRef, MetalLayer,
-    MTLClearColor, MTLCompareFunction, MTLLoadAction, MTLPixelFormat, MTLStorageMode,
-    MTLStoreAction, MTLTextureUsage, Texture,
-    TextureDescriptor,
-};
 use metal::objc::runtime::YES;
-use winit::dpi::PhysicalSize;
-use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
-use winit::window::Window;
+use metal::{
+    CommandQueue, DepthStencilDescriptor, DepthStencilState, Device, DeviceRef, MTLClearColor,
+    MTLCompareFunction, MTLLoadAction, MTLPixelFormat, MTLStorageMode, MTLStoreAction,
+    MTLTextureUsage, MetalLayer, Texture, TextureDescriptor,
+};
+use raw_window_handle::{RawWindowHandle, WindowHandle};
 
-use creature_creator_renderer::{Camera, Kind, Renderer, RenderGraph};
+use creature_creator_renderer::{Camera, Kind, RenderGraph, Renderer};
 
 use crate::lines::{line_segments, LinePipeline};
 use crate::shared::Shared;
 use crate::surfaces::{Surface, SurfacePipeline};
 use crate::uniforms::Uniforms;
 
-fn create_metal_layer(device: &DeviceRef, window: &Window) -> MetalLayer {
+fn create_metal_layer(device: &DeviceRef, window_handle: &WindowHandle) -> MetalLayer {
     let layer = MetalLayer::new();
     layer.set_device(device);
     layer.set_pixel_format(MTLPixelFormat::BGRA8Unorm);
     layer.set_presents_with_transaction(false);
 
-    let handle = window.window_handle().unwrap();
-    if let RawWindowHandle::AppKit(handle) = handle.as_raw() {
+    if let RawWindowHandle::AppKit(handle) = window_handle.as_raw() {
         unsafe {
             let view = handle.ns_view.as_ptr() as id;
             view.setWantsLayer(YES);
@@ -36,19 +32,19 @@ fn create_metal_layer(device: &DeviceRef, window: &Window) -> MetalLayer {
         }
     }
 
-    let draw_size = window.inner_size();
-    layer.set_drawable_size(CGSize::new(draw_size.width as f64, draw_size.height as f64));
-
-    let scale_factor = window.scale_factor();
-    layer.set_contents_scale(scale_factor);
+    // let draw_size = window.inner_size();
+    // layer.set_drawable_size(CGSize::new(draw_size.width as f64, draw_size.height as f64));
+    //
+    // let scale_factor = window.scale_factor();
+    // layer.set_contents_scale(scale_factor);
 
     layer
 }
 
-fn prepare_depth_target(device: &DeviceRef, size: PhysicalSize<u32>) -> Texture {
+fn prepare_depth_target(device: &DeviceRef, size: (u32, u32)) -> Texture {
     let texture_descriptor = TextureDescriptor::new();
-    texture_descriptor.set_width(size.width as u64);
-    texture_descriptor.set_height(size.height as u64);
+    texture_descriptor.set_width(size.0 as u64);
+    texture_descriptor.set_height(size.1 as u64);
     texture_descriptor.set_pixel_format(MTLPixelFormat::Depth32Float);
     texture_descriptor.set_storage_mode(MTLStorageMode::Memoryless);
     texture_descriptor.set_usage(MTLTextureUsage::RenderTarget);
@@ -80,18 +76,16 @@ pub struct MetalRenderer {
 }
 
 impl MetalRenderer {
-    pub fn new(window: &Window, mut camera: Camera) -> Self {
+    pub fn new(window: &WindowHandle, mut camera: Camera) -> Self {
         let device = Device::system_default().expect("no device found");
         let command_queue = device.new_command_queue();
 
         let layer = create_metal_layer(&device, window);
 
-        let size = window.inner_size();
-
-        let depth_target = prepare_depth_target(&device, size);
+        let depth_target = prepare_depth_target(&device, (10, 10));
         let depth_state = create_depth_state(&device);
 
-        camera.aspect_ratio_updated(size.width as f32 / size.height as f32);
+        camera.aspect_ratio_updated(1.0);
         let uniforms = Shared::new(&device, Uniforms::new(&camera));
 
         let sphere_pipeline = SurfacePipeline::new(&device);
@@ -113,14 +107,14 @@ impl MetalRenderer {
 }
 
 impl Renderer for MetalRenderer {
-    fn resized(&mut self, new_size: PhysicalSize<u32>) {
+    fn resized(&mut self, new_size: (u32, u32)) {
         self.layer
-            .set_drawable_size(CGSize::new(new_size.width as f64, new_size.height as f64));
+            .set_drawable_size(CGSize::new(new_size.0 as f64, new_size.1 as f64));
 
         self.depth_target = prepare_depth_target(&self.device, new_size);
 
         self.camera
-            .aspect_ratio_updated(new_size.width as f32 / new_size.height as f32);
+            .aspect_ratio_updated(new_size.0 as f32 / new_size.1 as f32);
         self.uniforms.camera_updated(&self.camera)
     }
 
