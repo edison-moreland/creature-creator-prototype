@@ -8,4 +8,8 @@
 #include "creature-creator-metal-renderer.h"
 #include "SwiftBridgeCore.h"
 
+
+#include "character/renderer/shader-types.h"
+
+
 #endif

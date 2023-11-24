@@ -19,7 +19,7 @@ use crate::uniforms::Uniforms;
 fn create_metal_layer(device: &DeviceRef, window_handle: &WindowHandle) -> MetalLayer {
     let layer = MetalLayer::new();
     layer.set_device(device);
-    layer.set_pixel_format(MTLPixelFormat::BGRA8Unorm);
+    layer.set_pixel_format(MTLPixelFormat::RGBA8Unorm);
     layer.set_presents_with_transaction(false);
 
     if let RawWindowHandle::AppKit(handle) = window_handle.as_raw() {
@@ -31,12 +31,6 @@ fn create_metal_layer(device: &DeviceRef, window_handle: &WindowHandle) -> Metal
             );
         }
     }
-
-    // let draw_size = window.inner_size();
-    // layer.set_drawable_size(CGSize::new(draw_size.width as f64, draw_size.height as f64));
-    //
-    // let scale_factor = window.scale_factor();
-    // layer.set_contents_scale(scale_factor);
 
     layer
 }
@@ -162,7 +156,7 @@ impl Renderer for MetalRenderer {
         }
         encoder.set_depth_stencil_state(&self.depth_state);
         encoder.set_vertex_buffer(2, Some(self.uniforms.buffer()), 0);
-        self.line_pipeline.draw(encoder, segments);
+        self.line_pipeline.draw(encoder, &segments);
 
         encoder.end_encoding();
         command_buffer.present_drawable(drawable);

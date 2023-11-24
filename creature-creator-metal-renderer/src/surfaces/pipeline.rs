@@ -101,7 +101,7 @@ impl SurfacePipeline {
             .object_at(0)
             .unwrap();
 
-        attachment.set_pixel_format(MTLPixelFormat::BGRA8Unorm);
+        attachment.set_pixel_format(MTLPixelFormat::RGBA8Unorm);
         attachment.set_blending_enabled(true);
         attachment.set_rgb_blend_operation(metal::MTLBlendOperation::Add);
         attachment.set_alpha_blend_operation(metal::MTLBlendOperation::Add);

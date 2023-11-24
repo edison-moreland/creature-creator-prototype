@@ -7,6 +7,8 @@ pub use pipeline::{LinePipeline, LineSegment};
 mod lines;
 mod pipeline;
 
+// #[rustfmt::skip]
+#[allow(clippy::all)]
 #[swift_bridge::bridge]
 mod ffi {
     extern "Rust" {
@@ -30,32 +32,60 @@ mod ffi {
         ) -> LineSegment;
     }
 
-    // extern "Rust" {
-    //     type SwiftLinePipeline;
-    //
-    //     #[swift_bridge(init)]
-    //     fn new(config: AppConfig) -> SwiftLinePipeline;
-    //
-    //     fn get_user(&self, lookup: UserLookup) -> Option<&User>;
-    // }
+    extern "Rust" {
+        type SwiftLineSegments;
+        #[swift_bridge(init)]
+        fn new() -> SwiftLineSegments;
+
+        fn push(&mut self, segment: LineSegment);
+
+        fn clear(&mut self);
+    }
+
+    extern "Rust" {
+        type SwiftLinePipeline;
+
+        #[swift_bridge(init)]
+        fn new(device: *mut MTLDevice) -> SwiftLinePipeline;
+
+        fn draw(&mut self, encoder: *mut MTLRenderCommandEncoder, segments: &SwiftLineSegments);
+    }
 }
 
-struct SwiftLinePipeline {
+pub struct SwiftLineSegments {
+    segments: Vec<LineSegment>,
+}
+
+impl SwiftLineSegments {
+    pub fn new() -> Self {
+        Self { segments: vec![] }
+    }
+
+    pub fn push(&mut self, segment: LineSegment) {
+        self.segments.push(segment);
+    }
+
+    pub fn clear(&mut self) {
+        self.segments.clear()
+    }
+}
+
+pub struct SwiftLinePipeline {
     pipeline: LinePipeline,
 }
 
 impl SwiftLinePipeline {
-    fn new(device: *mut MTLDevice) -> SwiftLinePipeline {
+    pub fn new(device: *mut MTLDevice) -> SwiftLinePipeline {
         let device_ref = unsafe { DeviceRef::from_ptr(device) };
 
         SwiftLinePipeline {
-            pipeline: LinePipeline::new(&device_ref),
+            pipeline: LinePipeline::new(device_ref),
         }
     }
 
-    fn draw(&mut self, encoder: *mut MTLRenderCommandEncoder, segments: Vec<LineSegment>) {
+    pub fn draw(&mut self, encoder: *mut MTLRenderCommandEncoder, segments: &SwiftLineSegments) {
         let encoder_ref = unsafe { RenderCommandEncoderRef::from_ptr(encoder) };
 
-        self.pipeline.draw(&encoder_ref, segments)
+        self.pipeline.draw(encoder_ref, &segments.segments)
     }
 }

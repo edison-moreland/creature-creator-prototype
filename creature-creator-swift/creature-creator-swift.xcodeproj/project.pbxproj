@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B70026942B1142B90065D187 /* renderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B70026932B1142B90065D187 /* renderer.swift */; };
+		B70026962B1142C40065D187 /* camera.swift in Sources */ = {isa = PBXBuildFile; fileRef = B70026952B1142C40065D187 /* camera.swift */; };
+		B70026982B114EAB0065D187 /* linePipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = B70026972B114EAB0065D187 /* linePipeline.swift */; };
 		B796984C2B0BFE65004ECBFB /* creature_creator_swiftApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B796984B2B0BFE65004ECBFB /* creature_creator_swiftApp.swift */; };
 		B796984E2B0BFE65004ECBFB /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B796984D2B0BFE65004ECBFB /* ContentView.swift */; };
 		B79698502B0BFE66004ECBFB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B796984F2B0BFE66004ECBFB /* Assets.xcassets */; };
@@ -17,6 +20,9 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		B70026932B1142B90065D187 /* renderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = renderer.swift; sourceTree = "<group>"; };
+		B70026952B1142C40065D187 /* camera.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = camera.swift; sourceTree = "<group>"; };
+		B70026972B114EAB0065D187 /* linePipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = linePipeline.swift; sourceTree = "<group>"; };
 		B79698482B0BFE65004ECBFB /* creature-creator-swift.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "creature-creator-swift.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		B796984B2B0BFE65004ECBFB /* creature_creator_swiftApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = creature_creator_swiftApp.swift; sourceTree = "<group>"; };
 		B796984D2B0BFE65004ECBFB /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -31,6 +37,7 @@
 		B79698B82B0C26E3004ECBFB /* SwiftBridgeCore.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SwiftBridgeCore.swift; sourceTree = "<group>"; };
 		B79698BC2B0C27AB004ECBFB /* libcreature_creator_metal_renderer.d */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.dtrace; name = libcreature_creator_metal_renderer.d; path = ../target/release/libcreature_creator_metal_renderer.d; sourceTree = "<group>"; };
 		B79698BF2B0C2A3E004ECBFB /* libcreature_creator_metal_renderer.rlib */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcreature_creator_metal_renderer.rlib; path = ../target/release/libcreature_creator_metal_renderer.rlib; sourceTree = "<group>"; };
+		B7E5F6AC2B0C693E0072E6E0 /* shader-types.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "shader-types.h"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -45,6 +52,25 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		B70026912B11428B0065D187 /* character */ = {
+			isa = PBXGroup;
+			children = (
+				B70026922B1142A40065D187 /* renderer */,
+			);
+			path = character;
+			sourceTree = "<group>";
+		};
+		B70026922B1142A40065D187 /* renderer */ = {
+			isa = PBXGroup;
+			children = (
+				B7E5F6AC2B0C693E0072E6E0 /* shader-types.h */,
+				B70026932B1142B90065D187 /* renderer.swift */,
+				B70026952B1142C40065D187 /* camera.swift */,
+				B70026972B114EAB0065D187 /* linePipeline.swift */,
+			);
+			path = renderer;
+			sourceTree = "<group>";
+		};
 		B796983F2B0BFE65004ECBFB = {
 			isa = PBXGroup;
 			children = (
@@ -66,6 +92,7 @@
 		B796984A2B0BFE65004ECBFB /* creature-creator-swift */ = {
 			isa = PBXGroup;
 			children = (
+				B70026912B11428B0065D187 /* character */,
 				B796984B2B0BFE65004ECBFB /* creature_creator_swiftApp.swift */,
 				B796984D2B0BFE65004ECBFB /* ContentView.swift */,
 				B796984F2B0BFE66004ECBFB /* Assets.xcassets */,
@@ -185,10 +212,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B70026942B1142B90065D187 /* renderer.swift in Sources */,
 				B79698B92B0C26E3004ECBFB /* creature-creator-metal-renderer.swift in Sources */,
 				B796984E2B0BFE65004ECBFB /* ContentView.swift in Sources */,
 				B796984C2B0BFE65004ECBFB /* creature_creator_swiftApp.swift in Sources */,
 				B79698BA2B0C26E3004ECBFB /* SwiftBridgeCore.swift in Sources */,
+				B70026962B1142C40065D187 /* camera.swift in Sources */,
+				B70026982B114EAB0065D187 /* linePipeline.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

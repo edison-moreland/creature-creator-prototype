@@ -114,7 +114,7 @@ impl LinePipeline {
             .object_at(0)
             .unwrap();
 
-        attachment.set_pixel_format(MTLPixelFormat::BGRA8Unorm);
+        attachment.set_pixel_format(MTLPixelFormat::RGBA8Unorm);
         attachment.set_blending_enabled(true);
         attachment.set_rgb_blend_operation(metal::MTLBlendOperation::Add);
         attachment.set_alpha_blend_operation(metal::MTLBlendOperation::Add);
@@ -257,10 +257,10 @@ impl LinePipeline {
             0,
             VERTEX_COUNT as NSUInteger,
             self.segment_count as NSUInteger,
-        )
+        );
     }
 
-    pub fn draw(&mut self, encoder: &RenderCommandEncoderRef, segments: Vec<LineSegment>) {
+    pub fn draw(&mut self, encoder: &RenderCommandEncoderRef, segments: &[LineSegment]) {
         let segment_count = segments.len();
         self.segments[..segment_count].copy_from_slice(&segments);
         self.segment_count = segment_count;
